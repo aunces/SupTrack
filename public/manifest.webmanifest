@@ -1,0 +1,19 @@
+{
+  "name": "SupTrack 补剂记录",
+  "short_name": "SupTrack",
+  "description": "纯前端补剂摄入记录与库存管理工具，数据仅存本地",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#18181b",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "./vite.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
