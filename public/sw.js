@@ -17,23 +17,41 @@ self.addEventListener('activate', (event) => {
   )
 })
 
+/* 导航请求（index.html）走 network-first：否则旧缓存会把用户永久锁在旧版本上 */
+async function networkFirst(request) {
+  try {
+    const response = await fetch(request)
+    if (response.ok) {
+      const cache = await caches.open(CACHE_NAME)
+      await cache.put(request.url, response.clone())
+    }
+    return response
+  } catch (error) {
+    const cached = await caches.match(request)
+    if (cached) return cached
+    throw error
+  }
+}
+
+/* 静态资源文件名带 hash，cache-first 最快且不会串版本 */
+async function cacheFirst(request) {
+  const cached = await caches.match(request)
+  if (cached) return cached
+
+  const response = await fetch(request)
+  if (response.ok) {
+    const cache = await caches.open(CACHE_NAME)
+    await cache.put(request, response.clone())
+  }
+  return response
+}
+
 self.addEventListener('fetch', (event) => {
   const request = event.request
   if (request.method !== 'GET') return
   if (new URL(request.url).origin !== self.location.origin) return
 
-  event.respondWith(
-    caches.match(request).then((cached) => {
-      if (cached) return cached
-      return fetch(request).then((response) => {
-        if (response.ok) {
-          const copy = response.clone()
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy))
-        }
-        return response
-      })
-    }),
-  )
+  event.respondWith(request.mode === 'navigate' ? networkFirst(request) : cacheFirst(request))
 })
 
 /* 用户确认后由页面触发，立即接管并刷新 */
