@@ -1,123 +1,145 @@
 import { db } from '@/db'
-import { NOT_DELETED } from '@/constants/deletedAt'
+import { INTAKE_ORIGIN, type IntakeOrigin, type TimeSlot } from '@/constants/enums'
 import { dailyIntakeRepository } from '@/repositories'
+import { parseOrThrow } from '@/schemas/common'
 import { DailyIntakeCreateSchema, DailyIntakeUpdateSchema } from '@/schemas/dailyIntake'
-import type { DailyIntakeCreateInput, DailyIntakeUpdateInput } from '@/schemas/dailyIntake'
 import type { DailyIntake } from '@/types'
 import { publishDataChange } from '@/utils/broadcast'
-import { backfillRange, today } from '@/utils/date'
 import { nowIso } from '@/utils/id'
-import { invalidateMissedCache } from '@/utils/missedCache'
-import { metaService } from './metaService'
-import { applyTransition, applyTransitionInTx } from './stockService'
 
-export type IntakeDateMode = 'today' | 'backfill' | 'update'
+/**
+ * 记录用例（实施指导书 §7.3）★ 打卡 5 秒闭环的写入口。
+ *
+ * 余量规则（§6.5，全部在同一个事务内）：
+ *   createIntake: insert(record) + 若 taken → stockCount -= amount
+ *   appendIntake: insert(record) + 若 taken → stockCount -= amount
+ *   undoIntake:   delete(record) + 若 taken → stockCount += amount
+ *   updateIntake: 若 amount 变化且 taken → stockCount += oldAmount - newAmount
+ * 余量为 null 表示「不记录余量」，全部余量逻辑跳过；允许为负，不拦截。
+ */
 
-export async function validateIntakeDate(date: string, mode: IntakeDateMode): Promise<void> {
-  switch (mode) {
-    case 'today':
-      if (date !== today()) throw new Error('今日录入的日期必须是今天')
-      return
-    case 'backfill': {
-      const windowDays = await metaService.getBackfillWindowDays()
-      const { min, max } = backfillRange(windowDays)
-      if (date > max) throw new Error('补录日期不能是今天或未来')
-      if (date < min) throw new Error(`补录日期不能早于 ${min}`)
-      return
-    }
-    case 'update':
-      // 历史修正不受范围限制
-      return
+export interface CheckInInput {
+  date: string
+  supplementId: string
+  planId: string | null
+  timeSlot: TimeSlot
+  amount: number
+  origin: IntakeOrigin
+}
+
+/**
+ * 重复打卡。UI 用 error.name 判断，不要匹配中文文案（§7.3）。
+ */
+export class DuplicateIntakeError extends Error {
+  constructor() {
+    super('今天已打卡')
+    this.name = 'DuplicateIntakeError'
   }
 }
 
-export async function createIntake(
-  input: DailyIntakeCreateInput,
-  mode: IntakeDateMode,
-): Promise<DailyIntake> {
-  await validateIntakeDate(input.date, mode)
+function buildRecord(input: CheckInInput): DailyIntake {
+  return dailyIntakeRepository.build({
+    date: input.date,
+    supplementId: input.supplementId,
+    planId: input.planId,
+    timeSlot: input.timeSlot,
+    amount: input.amount,
+    // 本模块只写「已服用」；标漏服走 backfillService（§7.5）
+    taken: true,
+    isExtra: input.origin !== INTAKE_ORIGIN.CHECKIN,
+    origin: input.origin,
+    notes: null,
+  })
+}
 
-  if (mode === 'today' && input.source === 'manual' && input.status === 'skipped') {
-    throw new Error('今日漏服请明日通过补录功能标记')
-  }
+/** 余量联动：null 表示不记录余量，直接跳过 */
+async function applyStockDelta(supplementId: string, delta: number): Promise<void> {
+  if (delta === 0) return
+  const supplement = await db.supplements.get(supplementId)
+  if (!supplement || supplement.stockCount == null) return
+  await db.supplements.update(supplementId, {
+    stockCount: supplement.stockCount + delta,
+    updatedAt: nowIso(),
+  })
+}
 
-  const parsed = DailyIntakeCreateSchema.parse(input) as DailyIntake
+/**
+ * 打卡 / 手动录入的统一写入口。
+ *
+ * 幂等：同 (date, supplementId, timeSlot) 已存在 taken=true 记录 → 抛 DuplicateIntakeError，
+ * UI 捕获后行内提示「今天已打卡」并提供「追加一次」。
+ */
+export async function createIntake(input: CheckInInput): Promise<DailyIntake> {
+  const record = parseOrThrow(DailyIntakeCreateSchema, buildRecord(input))
 
-  await db.transaction('rw', db.dailyIntakes, db.supplements, db.stockLogs, async (tx) => {
-    // 事务内二次校验重复（补录/打卡共用）
-    const rows: DailyIntake[] = await tx
-      .table('dailyIntakes')
+  await db.transaction('rw', db.dailyIntakes, db.supplements, async () => {
+    const rows = await db.dailyIntakes
       .where('[date+supplementId]')
-      .equals([parsed.date, parsed.supplementId])
+      .equals([record.date, record.supplementId])
       .toArray()
-    const duplicated = rows.some(
-      (r) => r.timeSlot === parsed.timeSlot && r.deletedAt === NOT_DELETED,
-    )
-    if (duplicated) throw new Error('该时段已有记录')
-
-    await applyTransitionInTx(tx, { type: 'create', intake: parsed, source: parsed.source })
+    if (rows.some((row) => row.timeSlot === record.timeSlot && row.taken)) {
+      throw new DuplicateIntakeError()
+    }
+    await db.dailyIntakes.add(record)
+    await applyStockDelta(record.supplementId, -record.amount)
   })
 
   publishDataChange()
-  return parsed
+  return record
 }
 
+/**
+ * 追加一次（跳过幂等检查）。用于「一天吃了两次」。
+ * 仍要服用走同一个函数，origin='forced'（P5：不弹确认）。
+ */
+export async function appendIntake(input: CheckInInput): Promise<DailyIntake> {
+  if (input.origin === INTAKE_ORIGIN.CHECKIN) {
+    throw new Error('「追加一次」必须使用追加来源，不能记为计划打卡')
+  }
+  const record = parseOrThrow(DailyIntakeCreateSchema, buildRecord(input))
+
+  await db.transaction('rw', db.dailyIntakes, db.supplements, async () => {
+    await db.dailyIntakes.add(record)
+    await applyStockDelta(record.supplementId, -record.amount)
+  })
+
+  publishDataChange()
+  return record
+}
+
+/** 撤销：硬删除 + 余量加回。不弹二次确认（§4.6 / R-15） */
+export async function undoIntake(id: string): Promise<void> {
+  await db.transaction('rw', db.dailyIntakes, db.supplements, async () => {
+    const record = await db.dailyIntakes.get(id)
+    if (!record) throw new Error('记录不存在')
+    await db.dailyIntakes.delete(id)
+    if (record.taken) await applyStockDelta(record.supplementId, record.amount)
+  })
+
+  publishDataChange()
+}
+
+/** 修改记录（数量 / 时段 / 备注）。数量变化时同步调整余量 */
 export async function updateIntake(
   id: string,
-  patch: DailyIntakeUpdateInput,
-  mode: IntakeDateMode,
-): Promise<DailyIntake> {
-  const record = await dailyIntakeRepository.get(id)
-  if (!record) throw new Error('记录不存在')
-  if (record.deletedAt !== NOT_DELETED) {
-    throw new Error('请先恢复该记录再修改')
-  }
-
-  await validateIntakeDate(patch.date ?? record.date, mode)
-  const parsed = DailyIntakeUpdateSchema.parse(patch)
-
-  const nextStatus = parsed.status ?? record.status
-  const nextAmount = parsed.actualAmount ?? record.actualAmount
-
-  if (nextStatus !== record.status) {
-    await applyTransition({
-      type: 'updateStatus',
-      intakeId: id,
-      newStatus: nextStatus,
-      newActualAmount: nextAmount,
-    })
-  } else if (nextAmount !== record.actualAmount) {
-    await applyTransition({ type: 'updateAmount', intakeId: id, newActualAmount: nextAmount })
-  }
-
-  const rest = { ...parsed }
-  delete rest.status
-  delete rest.actualAmount
-  if (Object.keys(rest).length > 0) {
-    await dailyIntakeRepository.update(id, { ...rest, updatedAt: nowIso() })
-  }
-
-  publishDataChange()
-  return (await dailyIntakeRepository.get(id)) as DailyIntake
-}
-
-export async function softDeleteIntake(id: string): Promise<void> {
-  await applyTransition({ type: 'softDelete', intakeId: id })
-  invalidateMissedCache()
-  publishDataChange()
-}
-
-export async function restoreIntake(
-  id: string,
-  unknownChoice?: 'not_deducted' | 'deducted',
+  patch: { amount?: number; timeSlot?: TimeSlot; notes?: string | null },
 ): Promise<void> {
-  await applyTransition({ type: 'restore', intakeId: id, unknownChoice })
-  invalidateMissedCache()
+  await db.transaction('rw', db.dailyIntakes, db.supplements, async () => {
+    const record = await db.dailyIntakes.get(id)
+    if (!record) throw new Error('记录不存在')
+
+    const parsed = parseOrThrow(DailyIntakeUpdateSchema, patch)
+    await db.dailyIntakes.update(id, { ...parsed, updatedAt: nowIso() })
+
+    if (record.taken && parsed.amount !== undefined && parsed.amount !== record.amount) {
+      await applyStockDelta(record.supplementId, record.amount - parsed.amount)
+    }
+  })
+
   publishDataChange()
 }
 
-/** 彻底删除：仅物理删除，不触碰库存 */
-export async function purgeIntake(id: string): Promise<void> {
-  await dailyIntakeRepository.purge(id)
-  publishDataChange()
+/** 按日的记录查询（页面用） */
+export async function listByDate(date: string): Promise<DailyIntake[]> {
+  return dailyIntakeRepository.listByDate(date)
 }

@@ -28,26 +28,31 @@ export const supplementIngredientRepository = {
   },
 
   /**
-   * 按日期匹配当时有效的配方（需求 5.4）：
+   * 按日期匹配当时有效的配方：
    * effectiveFrom <= date <= effectiveTo（effectiveTo 为空表示当前有效）。
-   * includeDeleted 默认为 true —— 汇总计算需要包含已删除关联。
+   * 已失效的关联也要返回 —— 回看历史需要按「当时的配方」算（§8.5）。
    */
-  async effectiveAt(supplementId: string, date: string, includeDeleted = true) {
+  async effectiveAt(supplementId: string, date: string): Promise<SupplementIngredient[]> {
     const rows = await db.supplementIngredients
       .where('[supplementId+ingredientId]')
       .between([supplementId, Dexie.minKey], [supplementId, Dexie.maxKey])
       .toArray()
 
     return rows.filter((row) => {
-      if (!includeDeleted && row.deletedAt !== 0) return false
       if (row.effectiveFrom > date) return false
       if (row.effectiveTo != null && row.effectiveTo < date) return false
       return true
     })
   },
 
-  async listBySupplement(supplementId: string, includeDeleted = false) {
+  async listBySupplement(supplementId: string): Promise<SupplementIngredient[]> {
+    return db.supplementIngredients.where('supplementId').equals(supplementId).toArray()
+  },
+
+  /** 级联硬删除用（删补剂时） */
+  async deleteBySupplement(supplementId: string): Promise<number> {
     const rows = await db.supplementIngredients.where('supplementId').equals(supplementId).toArray()
-    return includeDeleted ? rows : rows.filter((r) => r.deletedAt === 0)
+    await db.supplementIngredients.bulkDelete(rows.map((row) => row.id))
+    return rows.length
   },
 }

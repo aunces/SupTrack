@@ -1,32 +1,21 @@
 import type { Table } from 'dexie'
-import { NOT_DELETED, type DeletedAt } from '@/constants/deletedAt'
-import { nowIso } from '@/utils/id'
-
-export interface SoftDeletable {
-  id: string
-  deletedAt: DeletedAt
-}
 
 /**
- * 通用仓储：统一软删除过滤。
- * 读操作默认只返回 deletedAt === 0 的记录，需要回收站时用 trash() / allIncludingDeleted()。
+ * 通用仓储：表级 CRUD，不含任何业务规则。
+ *
+ * 已去掉软删除（D2=A / R-04）：没有 softDelete / restore / trash / purge，
+ * 删除就是真的删除，一把 remove。仓储也不判断「能不能删」——那是 service 的事。
  */
-export function createRepository<T extends SoftDeletable>(table: Table<T, string>) {
+export function createRepository<T extends { id: string }>(table: Table<T, string>) {
   return {
     table,
 
     async all(): Promise<T[]> {
-      return table.filter((r) => r.deletedAt === NOT_DELETED).toArray()
-    },
-
-    async allIncludingDeleted(): Promise<T[]> {
       return table.toArray()
     },
 
-    /** 回收站：所有已软删除记录，按删除时间倒序 */
-    async trash(): Promise<T[]> {
-      const rows = await table.filter((r) => r.deletedAt !== NOT_DELETED).toArray()
-      return rows.sort((a, b) => String(b.deletedAt).localeCompare(String(a.deletedAt)))
+    async count(): Promise<number> {
+      return table.count()
     },
 
     async get(id: string): Promise<T | undefined> {
@@ -52,18 +41,14 @@ export function createRepository<T extends SoftDeletable>(table: Table<T, string
       await table.update(id, patch as never)
     },
 
-    async softDelete(id: string): Promise<void> {
-      await table.update(id, { deletedAt: nowIso(), updatedAt: nowIso() } as never)
-    },
-
-    async restore(id: string): Promise<void> {
-      await table.update(id, { deletedAt: NOT_DELETED, updatedAt: nowIso() } as never)
-    },
-
-    async purge(id: string): Promise<void> {
+    async remove(id: string): Promise<void> {
       await table.delete(id)
+    },
+
+    async clear(): Promise<void> {
+      await table.clear()
     },
   }
 }
 
-export type Repository<T extends SoftDeletable> = ReturnType<typeof createRepository<T>>
+export type Repository<T extends { id: string }> = ReturnType<typeof createRepository<T>>

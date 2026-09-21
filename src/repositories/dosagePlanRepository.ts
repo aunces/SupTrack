@@ -1,4 +1,3 @@
-import Dexie from 'dexie'
 import { db } from '@/db'
 import { DosagePlanCreateSchema, DosagePlanUpdateSchema } from '@/schemas/dosagePlan'
 import type { DosagePlanCreateInput, DosagePlanUpdateInput } from '@/schemas/dosagePlan'
@@ -8,6 +7,9 @@ import { createRepository } from './base'
 
 const base = createRepository<DosagePlan>(db.dosagePlans)
 
+/**
+ * isActive 是 boolean，IndexedDB 不接受 boolean 作索引 key，故不建索引、查询侧过滤。
+ */
 export const dosagePlanRepository = {
   ...base,
 
@@ -21,29 +23,31 @@ export const dosagePlanRepository = {
     await base.update(id, { ...parsed, updatedAt: nowIso() } as Partial<DosagePlan>)
   },
 
-  /**
-   * 指定日期的启用计划。
-   * onlyExistingAtDate = true 时仅返回 createdAt <= date 的计划（补录 / 次日提醒 / 日历完成度使用），
-   * 避免"计划创建于该日之后却被当作应服项"的历史伪造。
-   */
-  async listActiveForDate(
-    date: string,
-    options: { onlyExistingAtDate?: boolean } = {},
-  ): Promise<DosagePlan[]> {
-    const rows = await db.dosagePlans
-      .where('[deletedAt+supplementId]')
-      .between([0, Dexie.minKey], [0, Dexie.maxKey])
-      .toArray()
-
-    const active = rows.filter((plan) => plan.isActive === true)
-    if (!options.onlyExistingAtDate) return active
-
-    const endOfDate = `${date}T23:59:59.999Z`
-    return active.filter((plan) => plan.createdAt <= endOfDate)
+  /** 全部启用计划（今日页渲染用） */
+  async listActive(): Promise<DosagePlan[]> {
+    const rows = await db.dosagePlans.toArray()
+    return rows.filter((plan) => plan.isActive)
   },
 
-  async listBySupplement(supplementId: string, includeDeleted = false) {
+  /** 该补剂的启用计划。DIFF-02 保证至多一条 */
+  async getActiveBySupplement(supplementId: string): Promise<DosagePlan | undefined> {
     const rows = await db.dosagePlans.where('supplementId').equals(supplementId).toArray()
-    return includeDeleted ? rows : rows.filter((r) => r.deletedAt === 0)
+    return rows.find((plan) => plan.isActive)
+  },
+
+  /** 该补剂全部计划（含已关闭，补剂页「已关闭」展示用） */
+  async listBySupplement(supplementId: string): Promise<DosagePlan[]> {
+    return db.dosagePlans.where('supplementId').equals(supplementId).toArray()
+  },
+
+  /** 级联硬删除用（删补剂时） */
+  async deleteBySupplement(supplementId: string): Promise<number> {
+    const rows = await db.dosagePlans.where('supplementId').equals(supplementId).toArray()
+    await db.dosagePlans.bulkDelete(rows.map((row) => row.id))
+    return rows.length
+  },
+
+  async countBySupplement(supplementId: string): Promise<number> {
+    return db.dosagePlans.where('supplementId').equals(supplementId).count()
   },
 }

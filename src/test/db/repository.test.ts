@@ -1,222 +1,171 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { db } from '@/db'
+import { ALL_SUPPLEMENTS } from '@/constants/enums'
 import {
   dailyIntakeRepository,
   dosagePlanRepository,
-  stockLogRepository,
-  supplementIngredientRepository,
+  pausePeriodRepository,
+  pauseSchemeRepository,
   supplementRepository,
 } from '@/repositories'
-import { NOT_DELETED } from '@/constants/deletedAt'
-import type { DailyIntake, DosagePlan, StockLog, Supplement } from '@/types'
-import { newId, nowIso } from '@/utils/id'
+import { resetDb, seedIntake, seedPlan, seedSupplement, supplementFixture } from '../helpers/db'
 
-function supplement(overrides: Partial<Supplement> = {}): Supplement {
-  const now = nowIso()
-  return {
-    id: newId(),
-    name: '鱼油',
-    brand: null,
-    description: null,
-    unitType: 'capsule',
-    stockCountInUsageUnit: 90,
-    stockUnit: null,
-    unitsPerStock: null,
-    productionDate: null,
-    expiryDate: null,
-    status: 'active',
-    deletedAt: NOT_DELETED,
-    createdAt: now,
-    updatedAt: now,
-    ...overrides,
-  }
-}
+beforeEach(async () => {
+  await resetDb()
+})
 
-function plan(supplementId: string, overrides: Partial<DosagePlan> = {}): DosagePlan {
-  const now = nowIso()
-  return {
-    id: newId(),
-    supplementId,
-    dailyAmount: 2,
-    timeSlots: ['morning'],
-    withMeal: true,
-    isActive: true,
-    notes: null,
-    deletedAt: NOT_DELETED,
-    createdAt: now,
-    updatedAt: now,
-    ...overrides,
-  }
-}
+describe('base 仓储', () => {
+  it('insert / get / update / remove 一把梭，没有软删除中间态', async () => {
+    const record = supplementFixture()
+    await supplementRepository.insert(record)
+    expect((await supplementRepository.get(record.id))?.name).toBe(record.name)
 
-function intake(overrides: Partial<DailyIntake> = {}): DailyIntake {
-  const now = nowIso()
-  return {
-    id: newId(),
-    date: '2026-09-10',
-    supplementId: 'supp',
-    planId: null,
-    plannedAmount: null,
-    plannedAmountSnapshot: null,
-    plannedAmountSource: 'unavailable',
-    actualAmount: 1,
-    timeSlot: 'morning',
-    status: 'taken',
-    source: 'manual',
-    notes: null,
-    stockState: 'deducted',
-    deletedAt: NOT_DELETED,
-    createdAt: now,
-    updatedAt: now,
-    ...overrides,
-  }
-}
+    await supplementRepository.update(record.id, { stockCount: 5 })
+    expect((await supplementRepository.get(record.id))?.stockCount).toBe(5)
 
-function log(overrides: Partial<StockLog> = {}): StockLog {
-  return {
-    id: newId(),
-    supplementId: 'supp',
-    deltaInUsageUnit: -1,
-    reason: 'intake',
-    relatedIntakeId: null,
-    note: null,
-    deletedAt: NOT_DELETED,
-    createdAt: nowIso(),
-    ...overrides,
-  }
-}
-
-describe('仓储层', () => {
-  beforeEach(async () => {
-    await db.delete()
-    await db.open()
-  })
-
-  it('查询默认过滤已软删除记录', async () => {
-    const supp = await supplementRepository.create(supplement())
-    expect(await supplementRepository.all()).toHaveLength(1)
-
-    await supplementRepository.softDelete(supp.id)
+    await supplementRepository.remove(record.id)
+    expect(await supplementRepository.get(record.id)).toBeUndefined()
     expect(await supplementRepository.all()).toHaveLength(0)
-    expect(await supplementRepository.trash()).toHaveLength(1)
+  })
+})
 
-    await supplementRepository.restore(supp.id)
-    expect(await supplementRepository.all()).toHaveLength(1)
+describe('supplementRepository', () => {
+  it('setStockCount 是覆盖式赋值（可为 null、可为负）', async () => {
+    const record = await seedSupplement({ stockCount: 10 })
+    await supplementRepository.setStockCount(record.id, -2)
+    expect((await db.supplements.get(record.id))?.stockCount).toBe(-2)
+
+    await supplementRepository.setStockCount(record.id, null)
+    expect((await db.supplements.get(record.id))?.stockCount).toBeNull()
+  })
+})
+
+describe('dosagePlanRepository', () => {
+  it('listActive / getActiveBySupplement / listBySupplement', async () => {
+    const supplement = await seedSupplement()
+    await seedPlan(supplement.id, { isActive: false, timeSlots: ['noon'] })
+    const active = await seedPlan(supplement.id, { isActive: true })
+
+    expect((await dosagePlanRepository.listActive()).map((p) => p.id)).toEqual([active.id])
+    expect((await dosagePlanRepository.getActiveBySupplement(supplement.id))?.id).toBe(active.id)
+    expect(await dosagePlanRepository.listBySupplement(supplement.id)).toHaveLength(2)
+    expect(await dosagePlanRepository.countBySupplement(supplement.id)).toBe(2)
   })
 
-  it('补剂软删除级联到计划与成分关联，但保留摄入记录与流水', async () => {
-    const supp = await supplementRepository.create(supplement())
-    await dosagePlanRepository.create(plan(supp.id))
-    await supplementIngredientRepository.create({
-      id: newId(),
-      supplementId: supp.id,
-      ingredientId: 'ing-1',
-      amountPerServing: 500,
-      effectiveFrom: '2026-01-01',
-      effectiveTo: null,
-      deletedAt: NOT_DELETED,
-      createdAt: nowIso(),
-      updatedAt: nowIso(),
-    })
-    const record = await dailyIntakeRepository.insert(intake({ supplementId: supp.id }))
+  it('deleteBySupplement 只删该补剂的计划', async () => {
+    const a = await seedSupplement({ name: 'A' })
+    const b = await seedSupplement({ name: 'B' })
+    await seedPlan(a.id)
+    await seedPlan(b.id)
 
-    await supplementRepository.softDeleteCascade(supp.id)
+    expect(await dosagePlanRepository.deleteBySupplement(a.id)).toBe(1)
+    expect(await dosagePlanRepository.listBySupplement(a.id)).toHaveLength(0)
+    expect(await dosagePlanRepository.listBySupplement(b.id)).toHaveLength(1)
+  })
+})
 
-    expect(await dosagePlanRepository.all()).toHaveLength(0)
-    expect(await supplementIngredientRepository.listBySupplement(supp.id)).toHaveLength(0)
-    // 孤儿数据保留
-    expect(await dailyIntakeRepository.get(record.id)).toBeDefined()
+describe('dailyIntakeRepository', () => {
+  it('listByDate / listByDateRange 按 date 等值或闭区间查', async () => {
+    await seedIntake({ date: '2026-09-19' })
+    await seedIntake({ date: '2026-09-20' })
+    await seedIntake({ date: '2026-09-22' })
+
+    expect(await dailyIntakeRepository.listByDate('2026-09-20')).toHaveLength(1)
+    expect(await dailyIntakeRepository.listByDateRange('2026-09-19', '2026-09-20')).toHaveLength(2)
+    // 单日区间也必须命中（新模型不再需要补 \uffff）
+    expect(await dailyIntakeRepository.listByDateRange('2026-09-20', '2026-09-20')).toHaveLength(1)
   })
 
-  it('DailyIntake 复合索引 [deletedAt+date] 只返回未删除记录', async () => {
-    const supp = await supplementRepository.create(supplement())
-    await dailyIntakeRepository.insert(intake({ supplementId: supp.id, date: '2026-09-01' }))
-    const deleted = await dailyIntakeRepository.insert(
-      intake({ supplementId: supp.id, date: '2026-09-02' }),
-    )
-    await dailyIntakeRepository.update(deleted.id, {
-      deletedAt: nowIso(),
-      stockState: 'was_deducted',
-    })
+  it('findActive 只认 taken=true：标了漏服的记录不阻止当天打卡', async () => {
+    await seedIntake({ date: '2026-09-20', supplementId: 'supp-1', taken: false, origin: 'manual' })
+    expect(
+      await dailyIntakeRepository.findActive('2026-09-20', 'supp-1', 'morning'),
+    ).toBeUndefined()
 
-    const rows = await dailyIntakeRepository.listByDateRange('2026-09-01', '2026-09-30')
-    expect(rows).toHaveLength(1)
-    expect(rows[0].date).toBe('2026-09-01')
+    await seedIntake({ date: '2026-09-20', supplementId: 'supp-1', taken: true })
+    expect(await dailyIntakeRepository.findActive('2026-09-20', 'supp-1', 'morning')).toBeDefined()
+    // 时段不同不算重复
+    expect(
+      await dailyIntakeRepository.findActive('2026-09-20', 'supp-1', 'evening'),
+    ).toBeUndefined()
   })
 
-  it('findActive 按 date + supplementId + timeSlot 检测重复', async () => {
-    const supp = await supplementRepository.create(supplement())
-    await dailyIntakeRepository.insert(
-      intake({ supplementId: supp.id, date: '2026-09-10', timeSlot: 'morning' }),
-    )
-    const found = await dailyIntakeRepository.findActive('2026-09-10', supp.id, 'morning')
-    expect(found).toBeDefined()
-    expect(await dailyIntakeRepository.findActive('2026-09-10', supp.id, 'evening')).toBeUndefined()
+  it('countBySupplement / deleteBySupplement', async () => {
+    await seedIntake({ supplementId: 'a' })
+    await seedIntake({ supplementId: 'a', timeSlot: 'evening' })
+    await seedIntake({ supplementId: 'b' })
+
+    expect(await dailyIntakeRepository.countBySupplement('a')).toBe(2)
+    expect(await dailyIntakeRepository.deleteBySupplement('a')).toBe(2)
+    expect(await dailyIntakeRepository.countBySupplement('a')).toBe(0)
+    expect(await dailyIntakeRepository.countBySupplement('b')).toBe(1)
+  })
+})
+
+describe('pausePeriodRepository', () => {
+  it("deleteBySupplement 不删 'ALL' 全局条目（DIFF-03）", async () => {
+    await db.pausePeriods.bulkAdd([
+      {
+        id: 'p-own',
+        schemeId: null,
+        supplementId: 'supp-1',
+        startDate: '2026-09-19',
+        endDate: null,
+        reason: null,
+        createdAt: '2026-09-19T00:00:00.000Z',
+        updatedAt: '2026-09-19T00:00:00.000Z',
+      },
+      {
+        id: 'p-all',
+        schemeId: null,
+        supplementId: ALL_SUPPLEMENTS,
+        startDate: '2026-09-19',
+        endDate: null,
+        reason: null,
+        createdAt: '2026-09-19T00:00:00.000Z',
+        updatedAt: '2026-09-19T00:00:00.000Z',
+      },
+    ])
+
+    expect(await pausePeriodRepository.deleteBySupplement('supp-1')).toBe(1)
+    const rest = await pausePeriodRepository.all()
+    expect(rest.map((p) => p.id)).toEqual(['p-all'])
+
+    // 传 'ALL' 时一个都不删（防误用）
+    expect(await pausePeriodRepository.deleteBySupplement(ALL_SUPPLEMENTS)).toBe(0)
+  })
+})
+
+describe('pauseSchemeRepository', () => {
+  it('getActiveScheme 返回执行中的那一组', async () => {
+    const now = '2026-09-18T00:00:00.000Z'
+    await db.pauseSchemes.bulkAdd([
+      {
+        id: 's-stop',
+        name: '已停止',
+        note: null,
+        isActive: false,
+        activatedAt: '2026-09-01',
+        endedAt: '2026-09-05',
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        id: 's-active',
+        name: '抗生素期间',
+        note: null,
+        isActive: true,
+        activatedAt: '2026-09-18',
+        endedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      },
+    ])
+
+    expect((await pauseSchemeRepository.getActiveScheme())?.id).toBe('s-active')
   })
 
-  it('listActiveForDate 支持 onlyExistingAtDate 历史真实性过滤', async () => {
-    const supp = await supplementRepository.create(supplement())
-    await dosagePlanRepository.create(plan(supp.id, { createdAt: '2026-09-01T00:00:00.000Z' }))
-    const later = await dosagePlanRepository.create(
-      plan(supp.id, { createdAt: '2026-09-20T00:00:00.000Z' }),
-    )
-
-    const all = await dosagePlanRepository.listActiveForDate('2026-09-10')
-    expect(all).toHaveLength(2)
-
-    const onlyExisting = await dosagePlanRepository.listActiveForDate('2026-09-10', {
-      onlyExistingAtDate: true,
-    })
-    expect(onlyExisting).toHaveLength(1)
-    expect(onlyExisting[0].id).not.toBe(later.id)
-  })
-
-  it('StockLog 回收站分页使用 [deletedAt+createdAt] 复合索引', async () => {
-    await stockLogRepository.insert(log({ id: 'log-1', createdAt: '2026-09-01T00:00:00.000Z' }))
-    await stockLogRepository.insert(
-      log({
-        id: 'log-2',
-        createdAt: '2026-09-02T00:00:00.000Z',
-        deletedAt: '2026-09-03T00:00:00.000Z',
-      }),
-    )
-    const trash = await stockLogRepository.trashPaged(0, 50)
-    expect(trash).toHaveLength(1)
-    expect(trash[0].id).toBe('log-2')
-  })
-
-  it('配方版本匹配按日期取当时有效记录', async () => {
-    const suppId = 'supp-version'
-    const oldLinkId = newId()
-    const newLinkId = newId()
-    await supplementIngredientRepository.create({
-      id: oldLinkId,
-      supplementId: suppId,
-      ingredientId: 'ing-1',
-      amountPerServing: 100,
-      effectiveFrom: '2026-01-01',
-      effectiveTo: '2026-06-30',
-      deletedAt: NOT_DELETED,
-      createdAt: nowIso(),
-      updatedAt: nowIso(),
-    })
-    await supplementIngredientRepository.create({
-      id: newLinkId,
-      supplementId: suppId,
-      ingredientId: 'ing-1',
-      amountPerServing: 200,
-      effectiveFrom: '2026-07-01',
-      effectiveTo: null,
-      deletedAt: NOT_DELETED,
-      createdAt: nowIso(),
-      updatedAt: nowIso(),
-    })
-
-    expect((await supplementIngredientRepository.effectiveAt(suppId, '2026-03-01'))[0].id).toBe(
-      oldLinkId,
-    )
-    expect((await supplementIngredientRepository.effectiveAt(suppId, '2026-09-01'))[0].id).toBe(
-      newLinkId,
-    )
+  it('没有执行中的组时返回 undefined', async () => {
+    expect(await pauseSchemeRepository.getActiveScheme()).toBeUndefined()
   })
 })
