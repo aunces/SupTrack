@@ -1,0 +1,3068 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>补剂记录工具 · 原型线框 v12.2</title>
+    <style>
+      :root {
+        --bg: #f4f5f7;
+        --surface: #ffffff;
+        --line: #dfe3e8;
+        --line-2: #c9d0d8;
+        --ink: #1f2328;
+        --ink-2: #4b5563;
+        --ink-3: #8b949e;
+        --wf-bg: #ffffff;
+        --ph-bg: #f7f9fb;
+        --ph-line: #cfd6de;
+        --accent: #4f46e5;
+        --accent-soft: #eef0ff;
+        --amber: #f59e0b;
+        --emerald: #10b981;
+        --slate: #94a3b8;
+        --violet: #8b5cf6;
+        --rose: #e11d48;
+        --radius: 12px;
+        --shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 6px 20px rgba(16, 24, 40, 0.055);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-size: 15px;
+        line-height: 1.7;
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
+          'Microsoft YaHei', sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      .wrap {
+        max-width: 1240px;
+        margin: 0 auto;
+        padding: 0 24px 80px;
+      }
+
+      /* hero */
+      .hero {
+        background: #fff;
+        border-bottom: 1px solid var(--line);
+        padding: 38px 0 28px;
+        margin-bottom: 24px;
+      }
+      .hero-in {
+        max-width: 1240px;
+        margin: 0 auto;
+        padding: 0 24px;
+      }
+      .kicker {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12.5px;
+        font-weight: 600;
+        color: var(--accent);
+        background: var(--accent-soft);
+        padding: 4px 12px;
+        border-radius: 999px;
+        margin-bottom: 14px;
+      }
+      .hero h1 {
+        margin: 0 0 8px;
+        font-size: 30px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+      }
+      .hero .lead {
+        margin: 0 0 18px;
+        font-size: 16px;
+        color: var(--ink-2);
+        max-width: 820px;
+      }
+      .hero .lead b {
+        color: var(--ink);
+      }
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .chip {
+        font-size: 13px;
+        color: var(--ink-2);
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 5px 11px;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+      }
+      .chip i {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--ink-3);
+        font-style: normal;
+      }
+
+      /* toc */
+      .toc {
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        background: rgba(244, 245, 247, 0.9);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border-bottom: 1px solid var(--line);
+        margin-bottom: 26px;
+      }
+      .toc-in {
+        max-width: 1240px;
+        margin: 0 auto;
+        padding: 11px 24px;
+        display: flex;
+        gap: 6px;
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+      .toc-in::-webkit-scrollbar {
+        display: none;
+      }
+      .toc a {
+        flex: 0 0 auto;
+        font-size: 13px;
+        color: var(--ink-2);
+        text-decoration: none;
+        padding: 5px 11px;
+        border-radius: 8px;
+        white-space: nowrap;
+      }
+      .toc a:hover {
+        background: #fff;
+        color: var(--ink);
+      }
+
+      section {
+        margin-bottom: 44px;
+        scroll-margin-top: 64px;
+      }
+      .sec-head {
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+        margin-bottom: 6px;
+        flex-wrap: wrap;
+      }
+      .sec-num {
+        font-size: 12.5px;
+        font-weight: 700;
+        color: var(--accent);
+        background: var(--accent-soft);
+        border-radius: 7px;
+        padding: 2px 9px;
+      }
+      .sec-head h2 {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 650;
+        letter-spacing: -0.005em;
+      }
+      .sec-head .sub {
+        font-size: 13px;
+        color: var(--ink-3);
+      }
+      .sec-desc {
+        font-size: 14px;
+        color: var(--ink-2);
+        margin: 0 0 18px;
+        max-width: 900px;
+      }
+
+      /* card shell */
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 18px 20px;
+        box-shadow: var(--shadow);
+      }
+      .panel + .panel {
+        margin-top: 14px;
+      }
+      .panel h3 {
+        margin: 0 0 4px;
+        font-size: 15px;
+        font-weight: 650;
+      }
+      .panel .h3sub {
+        margin: 0 0 12px;
+        font-size: 13px;
+        color: var(--ink-3);
+      }
+      .grid2 {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      }
+
+      /* ---------- wireframe primitives ---------- */
+      .wf {
+        background: var(--wf-bg);
+        border: 1px solid var(--line-2);
+        border-radius: 10px;
+        overflow: hidden;
+      }
+      .wf-cap {
+        font-size: 12px;
+        color: var(--ink-3);
+        padding: 7px 12px;
+        border-bottom: 1px dashed var(--line);
+        background: #fbfcfd;
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .wf-cap .lbl {
+        font-weight: 600;
+        color: var(--ink-2);
+      }
+      .wf-body {
+        display: grid;
+        grid-template-columns: 186px 1fr;
+        min-height: 0;
+      }
+      .wf-body.noside {
+        grid-template-columns: 1fr;
+      }
+
+      .side {
+        border-right: 1px dashed var(--line);
+        padding: 12px 10px;
+        background: #fafbfc;
+      }
+      .side .brand {
+        font-size: 12.5px;
+        font-weight: 700;
+        color: var(--ink-2);
+        padding: 4px 8px 10px;
+        display: flex;
+        align-items: center;
+        gap: 7px;
+      }
+      .side .brand span.sq {
+        width: 16px;
+        height: 16px;
+        border-radius: 5px;
+        background: var(--accent);
+        display: inline-block;
+      }
+      .nv {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
+        padding: 7px 9px;
+        border-radius: 7px;
+        font-size: 13px;
+        color: var(--ink-2);
+        margin-bottom: 2px;
+      }
+      .nv .nm {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .nv .dot {
+        width: 11px;
+        height: 11px;
+        border-radius: 3px;
+        border: 1.5px solid var(--line-2);
+        flex: 0 0 auto;
+      }
+      .nv.on {
+        background: var(--accent-soft);
+        color: #4338ca;
+        font-weight: 600;
+      }
+      .nv.on .dot {
+        border-color: var(--accent);
+        background: var(--accent);
+      }
+      .nv .ms {
+        font-size: 10.5px;
+        color: var(--ink-3);
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        padding: 0 4px;
+      }
+      .side .sep {
+        height: 1px;
+        background: var(--line);
+        margin: 9px 4px;
+      }
+      .side .foot {
+        font-size: 11.5px;
+        color: var(--ink-3);
+        padding: 8px 9px 2px;
+      }
+
+      .main {
+        padding: 16px 18px;
+        min-width: 0;
+      }
+      .pg-title {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 14px;
+        flex-wrap: wrap;
+      }
+      .pg-title .t {
+        font-size: 17px;
+        font-weight: 700;
+      }
+      .pg-title .d {
+        font-size: 13px;
+        color: var(--ink-3);
+      }
+
+      .ph {
+        border: 1px dashed var(--ph-line);
+        background: var(--ph-bg);
+        border-radius: 6px;
+      }
+      .bar {
+        height: 9px;
+        border-radius: 4px;
+        background: #e6eaee;
+      }
+      .bar.s {
+        height: 7px;
+      }
+      .bar.w40 {
+        width: 40%;
+      }
+      .bar.w60 {
+        width: 60%;
+      }
+      .bar.w80 {
+        width: 80%;
+      }
+
+      .btn-wf {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        border: 1px solid var(--line-2);
+        background: #fff;
+        border-radius: 7px;
+        padding: 4px 10px;
+        font-size: 12.5px;
+        color: var(--ink-2);
+        white-space: nowrap;
+      }
+      .btn-wf.pri {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+        font-weight: 600;
+      }
+      .btn-wf.ghost {
+        border-style: dashed;
+      }
+      .btn-wf.sm {
+        padding: 2px 8px;
+        font-size: 12px;
+      }
+
+      /* today list */
+      .slot {
+        font-size: 12.5px;
+        font-weight: 650;
+        color: var(--ink-2);
+        margin: 14px 0 7px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .slot .ln {
+        flex: 1;
+        height: 1px;
+        background: var(--line);
+      }
+      .slot .cnt {
+        font-weight: 400;
+        color: var(--ink-3);
+        font-size: 11.5px;
+      }
+
+      .dose {
+        display: grid;
+        grid-template-columns: 20px 1fr auto;
+        align-items: center;
+        gap: 11px;
+        border: 1px solid var(--line-2);
+        border-left: 3px solid var(--slate);
+        border-radius: 9px;
+        padding: 9px 12px;
+        margin-bottom: 7px;
+        background: #fff;
+      }
+      .dose .nm {
+        font-size: 13.5px;
+        font-weight: 600;
+      }
+      .dose .sub {
+        font-size: 12px;
+        color: var(--ink-3);
+        margin-top: 1px;
+      }
+      .dose .act {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+      .stg {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        border: 2px solid var(--ink-3);
+      }
+      .stg.done {
+        background: var(--ink-3);
+        border-color: var(--ink-3);
+        position: relative;
+      }
+      .stg.done::after {
+        content: '';
+        position: absolute;
+        left: 3.5px;
+        top: 4.5px;
+        width: 6px;
+        height: 3px;
+        border-left: 1.6px solid #fff;
+        border-bottom: 1.6px solid #fff;
+        transform: rotate(-45deg);
+      }
+      .stg.rest {
+        border-style: dashed;
+      }
+      .dose.rest {
+        border-left-color: #cbd5e1;
+        background: #fcfcfd;
+      }
+      .dose.stop {
+        border-left-color: #c4b5fd;
+        background: #fcfbff;
+        border-style: solid;
+      }
+      .stg.stop {
+        border-radius: 3px;
+        border-color: #a78bfa;
+        background: repeating-linear-gradient(45deg, #ede9fe 0 3px, #fff 3px 6px);
+      }
+      .dose.taken {
+        border-left-color: var(--emerald);
+      }
+      .dose.todo {
+        border-left-color: var(--amber);
+      }
+
+      .notice {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        gap: 10px;
+        border: 1px solid #ddd6fe;
+        background: #f8f7ff;
+        border-radius: 9px;
+        padding: 9px 12px;
+        margin-bottom: 6px;
+      }
+      .notice .tx {
+        font-size: 12.5px;
+        color: #5b21b6;
+      }
+      .sum {
+        display: flex;
+        gap: 14px;
+        align-items: center;
+        font-size: 12.5px;
+        color: var(--ink-2);
+        border-top: 1px dashed var(--line);
+        padding-top: 11px;
+        margin-top: 13px;
+        flex-wrap: wrap;
+      }
+      .sum b {
+        color: var(--ink);
+      }
+
+      /* swatch */
+      .sw {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 11.5px;
+        color: var(--ink-3);
+        white-space: nowrap;
+      }
+      .sw i {
+        width: 10px;
+        height: 10px;
+        border-radius: 3px;
+        display: inline-block;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+      }
+
+      /* pins + notes */
+      .pin {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 17px;
+        height: 17px;
+        border-radius: 50%;
+        background: var(--accent);
+        color: #fff;
+        font-size: 11px;
+        font-weight: 700;
+        vertical-align: 1px;
+        margin-left: 3px;
+        flex: 0 0 auto;
+      }
+      .pin.abs {
+        position: absolute;
+        top: -8px;
+        right: -8px;
+      }
+      .pinned {
+        position: relative;
+      }
+      ol.notes {
+        margin: 12px 0 0;
+        padding-left: 0;
+        list-style: none;
+        counter-reset: n;
+        font-size: 13px;
+        color: var(--ink-2);
+      }
+      ol.notes li {
+        counter-increment: n;
+        display: flex;
+        gap: 9px;
+        padding: 4px 0;
+        align-items: flex-start;
+      }
+      ol.notes li::before {
+        content: counter(n);
+        flex: 0 0 auto;
+        width: 17px;
+        height: 17px;
+        border-radius: 50%;
+        background: var(--accent);
+        color: #fff;
+        font-size: 11px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-top: 3px;
+      }
+      ol.notes li b {
+        color: var(--ink);
+      }
+
+      /* table wireframe */
+      .twf {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12.5px;
+      }
+      .twf th {
+        text-align: left;
+        font-weight: 600;
+        color: var(--ink-2);
+        background: #fafbfc;
+        border-bottom: 1px solid var(--line);
+        padding: 8px 10px;
+        font-size: 12px;
+        white-space: nowrap;
+      }
+      .twf td {
+        padding: 9px 10px;
+        border-bottom: 1px solid #eef1f4;
+        color: var(--ink-2);
+        vertical-align: middle;
+      }
+      .twf tr:last-child td {
+        border-bottom: none;
+      }
+      .twf .op {
+        display: flex;
+        gap: 6px;
+      }
+
+      /* dialog wireframe */
+      .modal-wf {
+        background: #fff;
+        border: 1px solid var(--line-2);
+        border-radius: 11px;
+        overflow: hidden;
+        box-shadow: 0 12px 32px rgba(16, 24, 40, 0.1);
+      }
+      .modal-wf .hd {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .modal-wf .hd .t {
+        font-size: 14px;
+        font-weight: 650;
+      }
+      .modal-wf .hd .x {
+        color: var(--ink-3);
+        font-size: 15px;
+        line-height: 1;
+      }
+      .modal-wf .bd {
+        padding: 14px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .modal-wf .ft {
+        padding: 12px 16px;
+        border-top: 1px solid var(--line);
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        background: #fbfcfd;
+      }
+      .fld {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
+      .fld .lb {
+        font-size: 12.5px;
+        font-weight: 600;
+        color: var(--ink-2);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .fld .lb .req {
+        color: var(--rose);
+        font-weight: 400;
+      }
+      .fld .hint {
+        font-size: 11.5px;
+        color: var(--ink-3);
+      }
+      .fld .hint.warn {
+        color: #b45309;
+      }
+      .inp-wf {
+        border: 1px solid var(--line-2);
+        border-radius: 7px;
+        padding: 7px 10px;
+        font-size: 12.5px;
+        color: var(--ink-3);
+        background: #fff;
+      }
+      .inp-wf.err {
+        border-color: #fda4af;
+        background: #fff8f8;
+      }
+      .seg {
+        display: flex;
+        border: 1px solid var(--line-2);
+        border-radius: 8px;
+        overflow: hidden;
+        width: fit-content;
+      }
+      .seg span {
+        padding: 5px 12px;
+        font-size: 12.5px;
+        color: var(--ink-2);
+        border-right: 1px solid var(--line);
+      }
+      .seg span:last-child {
+        border-right: none;
+      }
+      .seg span.on {
+        background: var(--accent-soft);
+        color: #4338ca;
+        font-weight: 600;
+      }
+      .rowf {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .rowf.c3 {
+        grid-template-columns: 1fr 1fr 1fr;
+      }
+      .cbx {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 12.5px;
+        color: var(--ink-2);
+      }
+      .cbx .b {
+        width: 14px;
+        height: 14px;
+        border: 1.5px solid var(--line-2);
+        border-radius: 4px;
+        flex: 0 0 auto;
+      }
+      .cbx .b.on {
+        background: var(--accent);
+        border-color: var(--accent);
+        position: relative;
+      }
+      .cbx .b.on::after {
+        content: '';
+        position: absolute;
+        left: 3.5px;
+        top: 4px;
+        width: 6px;
+        height: 3px;
+        border-left: 1.6px solid #fff;
+        border-bottom: 1.6px solid #fff;
+        transform: rotate(-45deg);
+      }
+
+      /* calendar wireframe */
+      .cal {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 5px;
+      }
+      .cal .dow {
+        font-size: 11.5px;
+        color: var(--ink-3);
+        text-align: center;
+        padding-bottom: 3px;
+      }
+      .cal .d {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        min-height: 56px;
+        padding: 5px 6px;
+        font-size: 11.5px;
+        color: var(--ink-2);
+        background: #fff;
+      }
+      .cal .d.mut {
+        background: #fafbfc;
+        color: #c3cbd4;
+        border-color: #eef1f4;
+      }
+      .cal .d.today {
+        border-color: var(--accent);
+        border-width: 1.5px;
+      }
+      .cal .d .marks {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 3px;
+        margin-top: 5px;
+      }
+      .mk {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        border: 1.5px solid var(--slate);
+      }
+      .mk.done {
+        background: var(--emerald);
+        border-color: var(--emerald);
+      }
+      .mk.rest {
+        border-style: dashed;
+      }
+      .mk.miss {
+        background: var(--rose);
+        border-color: var(--rose);
+        border-radius: 2px;
+      }
+      .mk.stop {
+        border-radius: 2px;
+        background: repeating-linear-gradient(45deg, #e9e5fd 0 2px, #fff 2px 4px);
+        border-color: #a78bfa;
+      }
+      .cal-legend {
+        display: flex;
+        gap: 14px;
+        flex-wrap: wrap;
+        font-size: 12px;
+        color: var(--ink-2);
+        margin-top: 11px;
+        align-items: center;
+      }
+
+      /* generic blocks */
+      .blk {
+        border: 1px dashed var(--ph-line);
+        background: var(--ph-bg);
+        border-radius: 8px;
+        padding: 14px;
+        text-align: center;
+        font-size: 12.5px;
+        color: var(--ink-3);
+      }
+      .blk.big {
+        padding: 26px 14px;
+      }
+      .stack {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .hstack {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      /* callouts */
+      .callout {
+        background: #fff;
+        border: 1px solid var(--line);
+        border-left: 4px solid var(--accent);
+        border-radius: var(--radius);
+        padding: 15px 18px;
+        box-shadow: var(--shadow);
+        margin-top: 14px;
+      }
+      .callout h4 {
+        margin: 0 0 8px;
+        font-size: 14px;
+        font-weight: 700;
+      }
+      .callout ul {
+        margin: 0;
+        padding-left: 18px;
+        font-size: 13.5px;
+        color: var(--ink-2);
+      }
+      .callout.bad {
+        border-left-color: var(--rose);
+        background: linear-gradient(90deg, #fff1f2, #fff 42%);
+      }
+      .callout.good {
+        border-left-color: #10b981;
+        background: linear-gradient(90deg, #ecfdf5, #fff 42%);
+      }
+      .callout.warn {
+        border-left-color: var(--amber);
+        background: linear-gradient(90deg, #fff7e6, #fff 42%);
+      }
+
+      .tag {
+        font-size: 11.5px;
+        font-weight: 600;
+        padding: 1.5px 7px;
+        border-radius: 6px;
+        background: #f1f5f9;
+        color: #475569;
+        white-space: nowrap;
+      }
+      .tag.m1 {
+        background: #ecfdf5;
+        color: #047857;
+      }
+      .tag.m2 {
+        background: #eff6ff;
+        color: #1d4ed8;
+      }
+      .tag.m3 {
+        background: #f5f3ff;
+        color: #6d28d9;
+      }
+      .tag.new {
+        background: #fff7e6;
+        color: #b45309;
+      }
+      .tag.decide {
+        background: #fff1f2;
+        color: #be123c;
+      }
+
+      table.plain {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+      table.plain th {
+        text-align: left;
+        padding: 7px 10px;
+        border-bottom: 1px solid var(--line);
+        font-size: 12.5px;
+        color: var(--ink-2);
+        background: #fafbfc;
+      }
+      table.plain td {
+        padding: 7px 10px;
+        border-bottom: 1px solid #eef1f4;
+        color: var(--ink-2);
+        vertical-align: top;
+      }
+      table.plain tr:last-child td {
+        border-bottom: none;
+      }
+      code {
+        font-family: ui-monospace, Menlo, Consolas, monospace;
+        font-size: 12.5px;
+        background: #f1f5f9;
+        border-radius: 5px;
+        padding: 1px 5px;
+        color: #334155;
+      }
+
+      footer {
+        border-top: 1px solid var(--line);
+        margin-top: 38px;
+        padding-top: 20px;
+        font-size: 12.5px;
+        color: var(--ink-3);
+      }
+      footer p {
+        margin: 0 0 6px;
+      }
+
+      @media (max-width: 860px) {
+        .wf-body {
+          grid-template-columns: 1fr;
+        }
+        .side {
+          border-right: none;
+          border-bottom: 1px dashed var(--line);
+        }
+        .rowf,
+        .rowf.c3 {
+          grid-template-columns: 1fr;
+        }
+        .hero h1 {
+          font-size: 23px;
+        }
+      }
+      @media print {
+        body {
+          background: #fff;
+        }
+        .toc {
+          display: none;
+        }
+        .panel,
+        .callout,
+        .wf {
+          box-shadow: none;
+          break-inside: avoid;
+        }
+        section {
+          break-inside: avoid;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="hero">
+      <div class="hero-in">
+        <div class="kicker">原型线框 · 低保真 · v12.2 同步</div>
+        <h1>补剂记录工具 · 5 页线框 + 设置</h1>
+        <p class="lead">
+          依据 <b>v12.0-需求重梳理.md（v12.2）</b> 绘制。<b>目标平台 PC 优先</b>（侧边导航 +
+          键盘可操作）；窄屏只保「不破坏」。本稿只定<b>结构与交互</b>，不出视觉稿。
+        </p>
+        <div class="chips">
+          <span class="chip"><i></i>线框 ≠ 视觉稿：格子是占位，颜色仅示意</span>
+          <span class="chip"><i></i>四态视觉区分已给目标色值</span>
+          <span class="chip"><i></i>标注编号对应每图下方说明</span>
+          <span class="chip"><i></i>M1 = 今日 / 补剂 / 停药</span>
+        </div>
+      </div>
+    </header>
+
+    <nav class="toc">
+      <div class="toc-in">
+        <a href="#legend">⓪ 约定与骨架</a>
+        <a href="#today">① 今日页 M1</a>
+        <a href="#supp">② 补剂页 M1</a>
+        <a href="#pause">③ 停药页 M1/M2</a>
+        <a href="#cal">④ 日历页 M2</a>
+        <a href="#ing">⑤ 成分库 M3</a>
+        <a href="#settings">⑥ 设置页</a>
+        <a href="#states">⑦ 通用状态</a>
+        <a href="#open">⑧ 待确认事项</a>
+      </div>
+    </nav>
+
+    <div class="wrap">
+      <!-- ⓪ 约定与骨架 -->
+      <section id="legend">
+        <div class="sec-head">
+          <span class="sec-num">00</span>
+          <h2>低保真约定与全局骨架</h2>
+        </div>
+        <p class="sec-desc">先约定符号，后面 6 张线框都用这套语言读。</p>
+
+        <div class="panel">
+          <h3>符号约定</h3>
+          <p class="h3sub">
+            格子与灰条是占位，不用纠结里面的字；带编号的紫色圆点是交互标注，对应每张图下方的说明列表。
+          </p>
+          <div class="hstack" style="gap: 22px">
+            <span class="sw"
+              ><span class="ph" style="width: 34px; height: 18px; display: inline-block"></span
+              >占位区块</span
+            >
+            <span class="sw"
+              ><span class="bar" style="width: 44px; display: inline-block; height: 9px"></span
+              >占位文本</span
+            >
+            <span class="sw"><span class="btn-wf sm">按钮</span>可点控件</span>
+            <span class="sw"><span class="pin">1</span>交互标注</span>
+            <span class="sw"><i style="background: var(--amber)"></i>待服用</span>
+            <span class="sw"><i style="background: var(--emerald)"></i>已服用</span>
+            <span class="sw"><i style="background: var(--slate)"></i>今天休息</span>
+            <span class="sw"><i style="background: var(--violet)"></i>停用中</span>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>全局骨架 · AppShell（PC 优先）</h3>
+          <p class="h3sub">
+            沿用现有 <code>components/layout/AppShell.tsx</code>，只调整导航项与栅格。侧栏固定
+            220px，内容区居中且设最大宽度——宽屏下不拉成一行超长列表。
+          </p>
+          <div class="wf">
+            <div class="wf-cap">
+              <span class="lbl">全局骨架</span><span>目标平台：PC 宽屏 ≥ 1024px</span>
+            </div>
+            <div class="wf-body">
+              <div class="side">
+                <div class="brand"><span class="sq"></span>补剂记录</div>
+                <div class="nv">
+                  <span class="nm"><span class="dot"></span>今日</span>
+                </div>
+                <div class="nv">
+                  <span class="nm"><span class="dot"></span>补剂</span>
+                </div>
+                <div class="nv">
+                  <span class="nm"><span class="dot"></span>停药</span>
+                </div>
+                <div class="nv">
+                  <span class="nm"><span class="dot"></span>日历</span><span class="ms">M2</span>
+                </div>
+                <div class="nv">
+                  <span class="nm"><span class="dot"></span>成分库</span><span class="ms">M3</span>
+                </div>
+                <div class="sep"></div>
+                <div class="nv">
+                  <span class="nm"><span class="dot"></span>设置</span>
+                </div>
+                <div class="foot">M1 只出现前 3 项 + 设置</div>
+              </div>
+              <div class="main">
+                <div class="pg-title">
+                  <span class="t">页面标题区</span><span class="d">右侧放页面级主操作</span>
+                </div>
+                <div
+                  class="ph"
+                  style="
+                    height: 46px;
+                    margin-bottom: 12px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                  "
+                >
+                  <span style="font-size: 12.5px; color: var(--ink-3)"
+                    >内容区 · 最大宽度 720px 居中</span
+                  >
+                </div>
+                <div
+                  class="ph"
+                  style="height: 78px; display: flex; align-items: center; justify-content: center"
+                >
+                  <span style="font-size: 12.5px; color: var(--ink-3)"
+                    >滚动区（内部滚动，不整页滚动）</span
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+          <ol class="notes">
+            <li>
+              <b>侧栏固定不随内容滚动</b>，内容区独立滚动 — 打卡时列表不会因为页面跳动而错位。
+            </li>
+            <li>
+              <b>导航项直接决定 M1 范围</b>：M1 只渲染「今日 / 补剂 / 停药 /
+              设置」四项；日历与成分库在 M2 / M3 上线时才出现入口，避免出现点不进去的死链。
+            </li>
+            <li>
+              <b>窄屏（&lt; 860px）</b>：侧栏收为顶部下拉，内容区占满宽度。不改成底部
+              Tab，不做触摸手势（D5：移动端专门适配列入明确不做）。
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- ① 今日页 -->
+      <section id="today">
+        <div class="sec-head">
+          <span class="sec-num">01</span>
+          <h2>今日页</h2>
+          <span class="sub">M1 · 产品的全部价值在这一屏</span>
+        </div>
+        <p class="sec-desc">
+          这是整个项目最需要被设计过的一页。现有
+          <code>pages/today/index.tsx</code>
+          把四态、库存、回收站混在一起，信息密度被拖垮；本次重写按「一张清单 + 四态 +
+          时段分组」收干净。
+        </p>
+
+        <div class="panel">
+          <h3>主态</h3>
+          <p class="h3sub">四种状态同时出现，各自有独立视觉与独立文案。</p>
+          <div class="wf">
+            <div class="wf-cap">
+              <span class="lbl">今日 · 9月20日 周日</span><span>四态同屏 · 时段分组</span>
+            </div>
+            <div class="wf-body">
+              <div class="side">
+                <div class="brand"><span class="sq"></span>补剂记录</div>
+                <div class="nv on">
+                  <span class="nm"><span class="dot"></span>今日</span>
+                </div>
+                <div class="nv">
+                  <span class="nm"><span class="dot"></span>补剂</span>
+                </div>
+                <div class="nv">
+                  <span class="nm"><span class="dot"></span>停药</span><span class="ms">1</span>
+                </div>
+                <div class="sep"></div>
+                <div class="nv">
+                  <span class="nm"><span class="dot"></span>设置</span>
+                </div>
+              </div>
+              <div class="main">
+                <div class="pg-title">
+                  <span class="t">今天 · 9月20日 周日</span>
+                  <span class="d">待吃 2 · 已吃 1 · 今天不用吃 2</span>
+                </div>
+
+                <div class="notice pinned">
+                  <span class="tx">当前停药方案：<b>抗生素期间</b>（3 项）</span>
+                  <span class="hstack" style="gap: 6px"><span class="btn-wf sm">停止</span></span>
+                  <span class="pin abs">1</span>
+                </div>
+
+                <div class="slot">
+                  早上 <span class="cnt">1 待吃 · 1 已吃</span> <span class="ln"></span>
+                </div>
+
+                <div class="dose todo pinned">
+                  <span class="stg"></span>
+                  <div>
+                    <div class="nm">维生素 D3</div>
+                    <div class="sub">1 粒 · 余量 34</div>
+                  </div>
+                  <div class="act">
+                    <span class="btn-wf pri">打卡</span>
+                    <span class="sw"><i style="background: var(--amber)"></i>琥珀</span>
+                  </div>
+                  <span class="pin abs">2</span>
+                </div>
+
+                <div class="dose taken pinned">
+                  <span class="stg done"></span>
+                  <div>
+                    <div class="nm">鱼油</div>
+                    <div class="sub">2 粒 · 已服用 08:12 · 余量 58</div>
+                  </div>
+                  <div class="act">
+                    <span class="btn-wf">撤销</span>
+                    <span class="btn-wf ghost">追加一次</span>
+                    <span class="sw"><i style="background: var(--emerald)"></i>绿</span>
+                  </div>
+                  <span class="pin abs">3</span>
+                </div>
+
+                <div class="dose rest pinned">
+                  <span class="stg rest"></span>
+                  <div>
+                    <div class="nm" style="color: var(--ink-2)">钙片</div>
+                    <div class="sub">今天不用吃 · <b>下次 9/22</b></div>
+                  </div>
+                  <div class="act">
+                    <span class="btn-wf ghost">仍要服用</span>
+                    <span class="sw"><i style="background: var(--slate)"></i>灰</span>
+                  </div>
+                  <span class="pin abs">4</span>
+                </div>
+
+                <div class="dose stop pinned">
+                  <span class="stg stop"></span>
+                  <div>
+                    <div class="nm">复合维生素</div>
+                    <div class="sub">停用中 · 抗生素期间 · <b>9/30 恢复</b></div>
+                  </div>
+                  <div class="act">
+                    <span class="btn-wf ghost">仍要服用</span>
+                    <span class="sw"><i style="background: var(--violet)"></i>紫</span>
+                  </div>
+                  <span class="pin abs">5</span>
+                </div>
+
+                <div class="slot">
+                  睡前 <span class="cnt">1 待吃</span> <span class="ln"></span>
+                </div>
+
+                <div class="dose todo pinned">
+                  <span class="stg"></span>
+                  <div>
+                    <div class="nm">镁片</div>
+                    <div class="sub">1 粒 · 余量 12（偏低）</div>
+                  </div>
+                  <div class="act">
+                    <span class="btn-wf pri">打卡</span>
+                    <span class="pin abs">6</span>
+                  </div>
+                </div>
+
+                <div class="sum">
+                  <span>待吃 <b>2</b></span
+                  ><span>已吃 <b>1</b></span
+                  ><span>今天不用吃 <b>2</b></span>
+                  <span style="color: var(--ink-3)">· 不含漏服与停用（P4：不计入完成度分母）</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <ol class="notes">
+            <li>
+              <b>停药提醒条是条件渲染</b
+              >——只有在「存在执行中的方案组」时出现，解决「忘了自己设过停药」。没有则整条不占位。<span
+                class="tag decide"
+                >待确认</span
+              >
+              点击条的空白区是否跳到停药页？建议：不跳，只提供「停止」。
+            </li>
+            <li>
+              <b>主操作「打卡」是实心按钮</b
+              >，位于行右侧固定列——鼠标移到列表任意一行，按钮都在同一水平位置，不需要瞄准。<b>点击后不跳转、不滚动、不弹窗</b>，本行原地变为「已服用」，按钮换成「撤销」。这就是
+              5 秒闭环的全部实现。
+            </li>
+            <li>
+              <b>已服用行必须显示服用时间</b
+              >（08:12）。它是用户判断「我是不是记错了」的第一条线索。余量实时跟手变化。
+            </li>
+            <li>
+              <b>「今天休息」必须给出下次日期</b>（P2
+              硬规则）。「下次」用加粗，因为这一项就是「怕记混」的核心解药。行整体降饱和（虚线圆点 +
+              浅底），一眼可跳过。
+            </li>
+            <li>
+              <b>「停用中」与「今天休息」用不同图形</b>（斜纹方块 vs
+              虚线圆），不只是颜色不同——色盲用户也要能区分（P1 硬规则）。文案必须写出原因与恢复日。
+            </li>
+            <li>
+              <b>余量偏低的提示走文字</b>（「余量
+              12（偏低）」），不加额外图标。阈值来源见下方待确认项。
+            </li>
+          </ol>
+        </div>
+
+        <div class="grid2" style="margin-top: 14px">
+          <div class="panel">
+            <h3>状态 A · 全部吃完</h3>
+            <p class="h3sub">鼓励性收尾，不留空白。</p>
+            <div class="wf">
+              <div class="wf-cap">
+                <span class="lbl">今日 · 全部已服用</span><span>已完成</span>
+              </div>
+              <div class="wf-body noside">
+                <div class="main">
+                  <div class="pg-title">
+                    <span class="t">今天 · 9月20日 周日</span
+                    ><span class="d">已吃 3 · 今天不用吃 2</span>
+                  </div>
+                  <div class="dose taken">
+                    <span class="stg done"></span>
+                    <div>
+                      <div class="nm">维生素 D3</div>
+                      <div class="sub">1 粒 · 已服用 08:12</div>
+                    </div>
+                    <div class="act"><span class="btn-wf">撤销</span></div>
+                  </div>
+                  <div class="dose taken">
+                    <span class="stg done"></span>
+                    <div>
+                      <div class="nm">鱼油</div>
+                      <div class="sub">2 粒 · 已服用 08:12</div>
+                    </div>
+                    <div class="act"><span class="btn-wf">撤销</span></div>
+                  </div>
+                  <div class="dose taken">
+                    <span class="stg done"></span>
+                    <div>
+                      <div class="nm">镁片</div>
+                      <div class="sub">1 粒 · 已服用 22:40</div>
+                    </div>
+                    <div class="act"><span class="btn-wf">撤销</span></div>
+                  </div>
+                  <div class="sum"><span>今天都吃完了 · 明天见</span></div>
+                </div>
+              </div>
+            </div>
+            <ol class="notes">
+              <li>
+                <b>不做庆祝动效、不做连续打卡天数</b
+                >。这是记录工具，不是习惯养成类产品（合规边界：不做依赖诱导）。
+              </li>
+            </ol>
+          </div>
+
+          <div class="panel">
+            <h3>状态 B · 空状态（无启用计划）</h3>
+            <p class="h3sub">首次打开或全部计划被关闭时。</p>
+            <div class="wf">
+              <div class="wf-cap"><span class="lbl">今日 · 空</span><span>首次使用</span></div>
+              <div class="wf-body noside">
+                <div class="main">
+                  <div class="pg-title"><span class="t">今天 · 9月20日 周日</span></div>
+                  <div class="blk big" style="margin-top: 20px">
+                    <div
+                      style="
+                        font-size: 14px;
+                        color: var(--ink-2);
+                        font-weight: 600;
+                        margin-bottom: 6px;
+                      "
+                    >
+                      还没有要吃的补剂
+                    </div>
+                    <div style="margin-bottom: 14px">先添加一个补剂，再设置它的服用节奏</div>
+                    <span class="btn-wf pri">添加补剂</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <ol class="notes">
+              <li>
+                <b>空状态必须有一个明确的下一步动作</b>，「添加补剂」直接跳补剂页并打开新增
+                Dialog，少一次点击。
+              </li>
+            </ol>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top: 14px">
+          <h3>状态 C · 同一时段项目过多时</h3>
+          <p class="h3sub">吃 8 种补剂时，四态同屏会很长——这直接违反「不滚动」的硬要求。</p>
+          <div class="wf">
+            <div class="wf-cap"><span class="lbl">今日 · 密集态</span><span>折叠策略</span></div>
+            <div class="wf-body noside">
+              <div class="main">
+                <div class="slot">
+                  早上 <span class="cnt">2 待吃 · 1 已吃 · 3 今天不用吃</span>
+                  <span class="ln"></span>
+                </div>
+                <div class="dose todo">
+                  <span class="stg"></span>
+                  <div>
+                    <div class="nm">维生素 D3</div>
+                    <div class="sub">1 粒 · 余量 34</div>
+                  </div>
+                  <div class="act"><span class="btn-wf pri">打卡</span></div>
+                </div>
+                <div class="dose taken">
+                  <span class="stg done"></span>
+                  <div>
+                    <div class="nm">鱼油</div>
+                    <div class="sub">2 粒 · 已服用 08:12</div>
+                  </div>
+                  <div class="act"><span class="btn-wf">撤销</span></div>
+                </div>
+                <div
+                  style="
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    padding: 7px 12px;
+                    border: 1px dashed var(--line-2);
+                    border-radius: 9px;
+                    font-size: 12.5px;
+                    color: var(--ink-3);
+                    background: #fcfcfd;
+                  "
+                >
+                  <span style="font-size: 13px">▾</span
+                  ><span>另有 <b>3</b> 项今天不用吃（含 1 项停用中）</span>
+                  <span class="pin">1</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <ol class="notes">
+            <li>
+              <b>不吃项折叠规则（建议）</b>：同一时段内「今天休息 / 停用中」合计 ≤ 2 项时全部展开；≥
+              3 项时折叠为一行「另有 N
+              项今天不用吃」，展开后仍逐条给出下次日期与恢复日。<b>「待服用」与「已服用」永不折叠</b>——它们才是待办。<span
+                class="tag decide"
+                >待确认</span
+              >
+            </li>
+          </ol>
+        </div>
+
+        <div class="callout good">
+          <h4>四态视觉规范（P1 硬规则要求「独立视觉 + 独立文案」）</h4>
+          <p style="margin: 0 0 8px; font-size: 13.5px; color: var(--ink-2)">
+            线框是灰度的，但这里给出目标色值与区分维度。<b>三个维度同时区分：颜色 + 图形 + 文案</b
+            >，任一维度失效仍可辨识。
+          </p>
+          <table class="plain">
+            <thead>
+              <tr>
+                <th>状态</th>
+                <th>目标色</th>
+                <th>图形</th>
+                <th>文案模板</th>
+                <th>主操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><b>待服用</b></td>
+                <td>
+                  <span class="sw"><i style="background: var(--amber)"></i>琥珀 #F59E0B</span>
+                </td>
+                <td>空心圆</td>
+                <td><code>待服用 1 粒</code></td>
+                <td>打卡（实心）</td>
+              </tr>
+              <tr>
+                <td><b>已服用</b></td>
+                <td>
+                  <span class="sw"><i style="background: var(--emerald)"></i>绿 #10B981</span>
+                </td>
+                <td>实心圆 + 对勾</td>
+                <td><code>已服用 1 粒 · 早上</code></td>
+                <td>撤销</td>
+              </tr>
+              <tr>
+                <td><b>今天休息</b></td>
+                <td>
+                  <span class="sw"><i style="background: var(--slate)"></i>灰 #94A3B8</span>
+                </td>
+                <td>虚线圆</td>
+                <td><code>今天不用吃 · 下次 9/22</code></td>
+                <td>无（次要：仍要服用）</td>
+              </tr>
+              <tr>
+                <td><b>停用中</b></td>
+                <td>
+                  <span class="sw"><i style="background: var(--violet)"></i>紫 #8B5CF6</span>
+                </td>
+                <td>斜纹方块</td>
+                <td><code>停用中 · 抗生素期间 · 9/30 恢复</code></td>
+                <td>无（次要：仍要服用）</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout warn">
+          <h4>本次线框对今日页提了 3 个新决策点</h4>
+          <ul>
+            <li>
+              <b>不吃项是否折叠</b>——不折叠则 8
+              种补剂必须滚动，违反「不滚动」；折叠则可能藏起用户正在找的那一项。建议：只折叠不吃项，待吃/已吃永不折叠。
+            </li>
+            <li>
+              <b>余量阈值从哪来</b>——「余量偏低」需要一个阈值。建议按「剩余 ÷ 每次量 ≤ 5
+              天」计算，不引入用户配置（否则又要一个设置项）。
+            </li>
+            <li>
+              <b>今日页不做日期切换</b>——回看是日历页职责（避免两处重复，沿用 v11.3
+              DQ-14「同一批数据只出现一次」原则）。
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ② 补剂页 -->
+      <section id="supp">
+        <div class="sec-head">
+          <span class="sec-num">02</span>
+          <h2>补剂页</h2>
+          <span class="sub">M1 · 补剂 + 计划（节奏）在同一个入口</span>
+        </div>
+        <p class="sec-desc">
+          节奏是「计划」的属性，但用户心智里它就是「这个补剂怎么吃」。所以这一页把补剂与它的计划合并展示、合并编辑，不单独开一个「计划」页面。
+        </p>
+
+        <div class="panel">
+          <h3>列表</h3>
+          <p class="h3sub">一行一个补剂，节奏直接读出来（用户语言，不是参数）。</p>
+          <div class="wf">
+            <div class="wf-cap">
+              <span class="lbl">补剂列表</span><span>含启用 / 关闭状态</span>
+            </div>
+            <div class="wf-body">
+              <div class="side">
+                <div class="brand"><span class="sq"></span>补剂记录</div>
+                <div class="nv">
+                  <span class="nm"><span class="dot"></span>今日</span>
+                </div>
+                <div class="nv on">
+                  <span class="nm"><span class="dot"></span>补剂</span>
+                </div>
+                <div class="nv">
+                  <span class="nm"><span class="dot"></span>停药</span>
+                </div>
+                <div class="sep"></div>
+                <div class="nv">
+                  <span class="nm"><span class="dot"></span>设置</span>
+                </div>
+              </div>
+              <div class="main">
+                <div class="pg-title">
+                  <span class="t">补剂</span
+                  ><span class="d"><span class="btn-wf pri">+ 新增补剂</span></span>
+                </div>
+                <table class="twf">
+                  <thead>
+                    <tr>
+                      <th>名称</th>
+                      <th>每次量</th>
+                      <th>节奏</th>
+                      <th>时段</th>
+                      <th>余量</th>
+                      <th>状态</th>
+                      <th>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><b>维生素 D3</b></td>
+                      <td>1 粒</td>
+                      <td><span class="tag">隔天</span></td>
+                      <td>早上</td>
+                      <td>34</td>
+                      <td>启用</td>
+                      <td>
+                        <span class="op"
+                          ><span class="btn-wf sm">编辑</span
+                          ><span class="btn-wf sm">删除</span></span
+                        >
+                      </td>
+                    </tr>
+                    <tr>
+                      <td><b>钙片</b></td>
+                      <td>2 片</td>
+                      <td><span class="tag">吃 5 停 2</span></td>
+                      <td>早上</td>
+                      <td>18</td>
+                      <td>启用</td>
+                      <td>
+                        <span class="op"
+                          ><span class="btn-wf sm">编辑</span
+                          ><span class="btn-wf sm">删除</span></span
+                        >
+                      </td>
+                    </tr>
+                    <tr>
+                      <td><b>鱼油</b></td>
+                      <td>2 粒</td>
+                      <td><span class="tag">每天</span></td>
+                      <td>早 + 晚</td>
+                      <td>58</td>
+                      <td>启用</td>
+                      <td>
+                        <span class="op"
+                          ><span class="btn-wf sm">编辑</span
+                          ><span class="btn-wf sm">删除</span></span
+                        >
+                      </td>
+                    </tr>
+                    <tr style="background: #fbfcfd">
+                      <td><b style="color: var(--ink-3)">复合维生素</b></td>
+                      <td>1 粒</td>
+                      <td><span class="tag">每天</span></td>
+                      <td>早上</td>
+                      <td>—</td>
+                      <td style="color: var(--ink-3)">已关闭</td>
+                      <td>
+                        <span class="op"
+                          ><span class="btn-wf sm">编辑</span
+                          ><span class="btn-wf sm">删除</span></span
+                        >
+                      </td>
+                    </tr>
+                    <tr style="background: #fffbf5">
+                      <td><b>镁片</b> <span class="pin">1</span></td>
+                      <td>1 粒</td>
+                      <td style="color: #b45309">配置异常</td>
+                      <td>睡前</td>
+                      <td>12</td>
+                      <td>启用</td>
+                      <td>
+                        <span class="op"
+                          ><span class="btn-wf sm">修正</span
+                          ><span class="btn-wf sm">删除</span></span
+                        >
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+                <div class="blk" style="margin-top: 12px; text-align: left; font-size: 12.5px">
+                  <b style="color: #b45309">配置异常行的处理：</b>节奏或停药参数缺失 /
+                  非法时，判定一律「不隐藏」——
+                  该补剂<b>仍然出现在今日页</b>并判为「该吃」，同时在本页标注「配置异常，请修正」，主操作由「编辑」换成「修正」。
+                  理由：数据被静默隐藏，用户没有任何发现渠道；错误显示只是多一行，一眼即可判断。
+                </div>
+              </div>
+            </div>
+          </div>
+          <ol class="notes">
+            <li>
+              <b>「配置异常」是独立视觉状态</b>（暖底 + 加粗提示），不是普通错误。它承担了 v12.2
+              §4.4「失败方向统一为不隐藏」的落地：<b>宁可多显示，绝不静默隐藏。</b>
+            </li>
+            <li>
+              <b>已关闭（<code>isActive=false</code>）与节奏休息是两件事</b
+              >（P6）。已关闭的补剂在列表里降饱和显示、今日页完全不出现；节奏休息只在今日页表现为「今天不用吃」。两者文案不得混用。
+            </li>
+            <li>
+              <span class="tag decide">待确认</span> 列表是否需要「已关闭」筛选器？建议 M1
+              不做，等真的攒够 10 条以上再说。
+            </li>
+          </ol>
+        </div>
+
+        <div class="grid2" style="margin-top: 14px">
+          <div class="panel">
+            <h3>新增 / 编辑 Dialog</h3>
+            <p class="h3sub">沿用现有 <code>components/ui/dialog.tsx</code>，宽 560px。</p>
+            <div class="modal-wf">
+              <div class="hd"><span class="t">编辑补剂</span><span class="x">✕</span></div>
+              <div class="bd">
+                <div class="rowf">
+                  <div class="fld">
+                    <span class="lb">名称 <span class="req">*</span></span
+                    ><span class="inp-wf">维生素 D3</span>
+                  </div>
+                  <div class="fld">
+                    <span class="lb">单位 <span class="req">*</span></span
+                    ><span class="inp-wf">粒（胶囊）▾</span>
+                  </div>
+                </div>
+                <div class="rowf">
+                  <div class="fld">
+                    <span class="lb">每次服用量 <span class="req">*</span></span
+                    ><span class="inp-wf">1</span>
+                  </div>
+                  <div class="fld">
+                    <span class="lb">余量（可留空）</span><span class="inp-wf">34</span>
+                    <span class="hint">留空 = 不记录余量</span>
+                  </div>
+                </div>
+
+                <div class="fld">
+                  <span class="lb"
+                    >服用时段 <span class="req">*</span><span class="pin">1</span></span
+                  >
+                  <div class="hstack" style="gap: 14px">
+                    <span class="cbx"><span class="b on"></span>早上</span>
+                    <span class="cbx"><span class="b"></span>中午</span>
+                    <span class="cbx"><span class="b"></span>晚上</span>
+                    <span class="cbx"><span class="b"></span>睡前</span>
+                  </div>
+                  <span class="hint"
+                    >可多选。同一个补剂要一天吃两次，就选两个时段，不要建两条计划。</span
+                  >
+                </div>
+
+                <div class="fld">
+                  <span class="lb"
+                    >服用节奏 <span class="req">*</span><span class="pin">2</span></span
+                  >
+                  <div class="seg">
+                    <span>每天</span><span class="on">隔天</span><span>每 N 天一次</span
+                    ><span>吃 N 停 M</span>
+                  </div>
+                  <div class="hint">选「隔天」时参数自动为 吃 1 停 1，用户不需要换算。</div>
+                </div>
+
+                <div class="fld" style="opacity: 0.55">
+                  <span class="lb" style="color: var(--ink-3)"
+                    >节奏参数（选「吃 N 停 M」时展开）</span
+                  >
+                  <div class="rowf c3">
+                    <span class="inp-wf">吃 5 天</span><span class="inp-wf">停 2 天</span
+                    ><span class="inp-wf">起点 9/20</span>
+                  </div>
+                  <span class="hint"
+                    >起点为节奏第 1 个「该吃」日；起点之前的日期该补剂不出现，不报错。</span
+                  >
+                </div>
+
+                <div class="fld">
+                  <span class="lb">过期日（可留空）</span
+                  ><span class="inp-wf" style="max-width: 200px">2027-03-01</span>
+                </div>
+                <div class="fld">
+                  <span class="lb">备注（可留空）</span
+                  ><span class="inp-wf" style="height: 44px"></span>
+                </div>
+                <div class="cbx" style="border-top: 1px dashed var(--line); padding-top: 11px">
+                  <span class="b on"></span>启用这个计划（取消勾选 = 今日页不再出现，历史记录保留）
+                </div>
+              </div>
+              <div class="ft">
+                <span class="btn-wf">取消</span><span class="btn-wf pri">保存</span>
+              </div>
+            </div>
+            <ol class="notes">
+              <li>
+                <b>时段是多选而非单选</b>，直接落地「一天吃两次 →
+                拆时段，不建两条计划」这条约束。要不要建第二条计划？表单里不给这个入口——从源头消除「同时段重叠」的可能。
+              </li>
+              <li>
+                <b>节奏用四个用户语言的分段控件</b>，不是让用户填 on/off 两个数字。「隔天」与「每 2
+                天一次」参数完全相同但用户语言不同，所以两个入口都要给（v12.2 §4.4）。
+              </li>
+              <li>
+                <span class="tag decide">待确认</span> 表单字段是否全部平铺？现在是 9
+                个字段一次显示完，稍长。可选方案：把「余量 / 过期日 /
+                备注」收进「更多设置」折叠区，默认只显示前 5
+                项。建议：先平铺，等真实填写时觉得累再折。
+              </li>
+            </ol>
+          </div>
+
+          <div class="panel">
+            <h3>删除确认</h3>
+            <p class="h3sub">D2 砍掉回收站后，这是唯一的防误删闸门——必须认真做。</p>
+            <div class="modal-wf">
+              <div class="hd"><span class="t">删除补剂</span><span class="x">✕</span></div>
+              <div class="bd">
+                <div style="font-size: 13.5px; color: var(--ink-2); line-height: 1.65">
+                  将删除 <b>维生素 D3</b>、它的计划，以及 <b>N 条历史记录</b>。<br />
+                  <b style="color: var(--rose)">此操作不可恢复。</b>
+                </div>
+                <div class="cbx">
+                  <span class="b on"></span>同时删除该补剂的 <b>N 条历史记录</b>
+                </div>
+                <div class="fld">
+                  <span class="hint"
+                    >取消勾选则保留历史记录，但补剂会被隐藏，成分汇总里这些记录将无法解析来源。</span
+                  >
+                </div>
+                <div
+                  class="blk"
+                  style="
+                    text-align: left;
+                    background: #fffbf5;
+                    border-color: #f0c36d;
+                    color: #92400e;
+                    font-size: 12.5px;
+                  "
+                >
+                  建议先导出备份再删除。<span class="btn-wf sm" style="margin-left: 6px"
+                    >前往导出</span
+                  >
+                </div>
+              </div>
+              <div class="ft">
+                <span class="btn-wf">取消</span
+                ><span class="btn-wf pri" style="background: var(--rose); border-color: var(--rose)"
+                  >删除</span
+                >
+              </div>
+            </div>
+            <ol class="notes">
+              <li>
+                <b>确认框里必须出现具体数字</b>（「N
+                条历史记录」）——抽象提示不构成有效确认。数字实时算出，不写死。
+              </li>
+              <li>
+                <b>「同时删除历史记录」默认勾选</b>（v12.2
+                §6.9）：这样成分汇总不会留下解析不出成分的孤儿数据。用户可取消，但要承担后果提示。
+              </li>
+              <li><b>危险按钮用红色实心</b>，且与「取消」在视觉上明确分离（右对齐两段式）。</li>
+              <li>
+                <span class="tag decide">待确认</span>
+                「删除记录」这一层（今日页撤销以外的删除）是否也需要同样强度的确认？建议：<b>不需要</b>——撤销是高频安全动作，已经直接删；补录时的删除给一个轻确认即可。
+              </li>
+            </ol>
+          </div>
+        </div>
+      </section>
+
+      <!-- ③ 停药页 -->
+      <section id="pause">
+        <div class="sec-head">
+          <span class="sec-num">03</span>
+          <h2>停药页</h2>
+          <span class="sub">M1 临时停药 · M2 方案组</span>
+        </div>
+        <p class="sec-desc">
+          两个分区，对应两种真实用法：随手加一条（临时），和成套情景一键切换（方案组）。方案组是
+          M2，但 M1 就要把分区的骨架留出来，避免 M2 再改一次信息架构。
+        </p>
+
+        <div class="panel">
+          <h3>主视图</h3>
+          <p class="h3sub">执行中的方案置顶并高亮；两个分区并列，不藏进 Tab。</p>
+          <div class="wf">
+            <div class="wf-cap"><span class="lbl">停药</span><span>两个分区</span></div>
+            <div class="wf-body">
+              <div class="side">
+                <div class="brand"><span class="sq"></span>补剂记录</div>
+                <div class="nv">
+                  <span class="nm"><span class="dot"></span>今日</span>
+                </div>
+                <div class="nv">
+                  <span class="nm"><span class="dot"></span>补剂</span>
+                </div>
+                <div class="nv on">
+                  <span class="nm"><span class="dot"></span>停药</span>
+                </div>
+                <div class="sep"></div>
+                <div class="nv">
+                  <span class="nm"><span class="dot"></span>设置</span>
+                </div>
+              </div>
+              <div class="main">
+                <div class="pg-title">
+                  <span class="t">停药</span
+                  ><span class="d"><span class="btn-wf pri">+ 加一条停药</span></span>
+                </div>
+
+                <div class="slot">
+                  停药方案组 <span class="tag m2">M2</span> <span class="ln"></span>
+                </div>
+
+                <div
+                  class="dose"
+                  style="
+                    border-left-color: var(--violet);
+                    background: #fcfbff;
+                    grid-template-columns: 1fr auto;
+                  "
+                >
+                  <div>
+                    <div class="nm">
+                      抗生素期间
+                      <span
+                        style="
+                          font-size: 11.5px;
+                          color: #6d28d9;
+                          background: #f5f3ff;
+                          border-radius: 5px;
+                          padding: 1px 6px;
+                          font-weight: 600;
+                        "
+                        >执行中</span
+                      >
+                    </div>
+                    <div class="sub">覆盖 3 项 · 9/18 起 · 未设结束日</div>
+                  </div>
+                  <div class="act">
+                    <span class="btn-wf">停止</span><span class="btn-wf sm">编辑</span>
+                  </div>
+                </div>
+
+                <div
+                  class="dose"
+                  style="border-left-color: #cbd5e1; grid-template-columns: 1fr auto"
+                >
+                  <div>
+                    <div class="nm" style="color: var(--ink-2)">服用碘剂前后</div>
+                    <div class="sub">覆盖 2 项 · 已停止</div>
+                  </div>
+                  <div class="act">
+                    <span class="btn-wf">执行</span><span class="btn-wf sm">编辑</span>
+                  </div>
+                </div>
+
+                <div
+                  style="
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    padding: 6px 4px;
+                    font-size: 12px;
+                    color: var(--ink-3);
+                  "
+                >
+                  <span class="pin">1</span>同一时刻至多一组执行中——执行新组会自动结束旧组
+                </div>
+
+                <div class="slot">临时停药 <span class="ln"></span></div>
+
+                <div
+                  class="dose"
+                  style="border-left-color: var(--amber); grid-template-columns: 1fr auto"
+                >
+                  <div>
+                    <div class="nm">鱼油</div>
+                    <div class="sub">9/19 → 9/21 · 原因：胃不舒服</div>
+                  </div>
+                  <div class="act">
+                    <span class="btn-wf sm">编辑</span><span class="btn-wf sm">删除</span>
+                  </div>
+                </div>
+
+                <div
+                  class="dose"
+                  style="border-left-color: var(--amber); grid-template-columns: 1fr auto"
+                >
+                  <div>
+                    <div class="nm">全部补剂</div>
+                    <div class="sub">9/25 起 · 持续中（未设结束日）</div>
+                  </div>
+                  <div class="act">
+                    <span class="btn-wf sm">编辑</span><span class="btn-wf sm">删除</span>
+                  </div>
+                </div>
+
+                <div class="blk" style="margin-top: 12px; text-align: left; font-size: 12.5px">
+                  <b>判定规则（写进代码，不靠 UI）：</b>
+                  <code>startDate ≤ 该日 ≤ (endDate ?? +∞)</code> 即停用；
+                  与节奏重叠时<b>停用优先</b>；与方案组并用时取<b>并集</b>；
+                  修改停药参数<b>只影响未来判定，已产生的记录不变</b>（需在编辑时提示）。
+                </div>
+              </div>
+            </div>
+          </div>
+          <ol class="notes">
+            <li>
+              <b>「同一时刻至多一组执行中」是设计约束，不是技术限制。</b
+              >多组叠加执行虽然能实现，但用户无法解释「我现在到底在停哪些」，所以不做。执行新组自动结束旧组，并在按钮上给出提示（<span
+                class="tag decide"
+                >待确认</span
+              >：是否需要在点「执行」时弹一句「将结束当前执行中的『抗生素期间』」？建议：需要，用轻确认）。
+            </li>
+            <li>
+              <b>「全部补剂」用 <code>'ALL'</code> 条目承担</b>（v11.3
+              DQ-12），渲染成一行「全部补剂」，不单独做一个「全局停药」开关——两个入口表达同一件事，用户会分不清。
+            </li>
+            <li>
+              <b>临时停药的目标补剂选择器要包含「全部补剂」</b>选项，位置在列表末尾并用分隔线隔开。
+            </li>
+          </ol>
+        </div>
+
+        <div class="grid2" style="margin-top: 14px">
+          <div class="panel">
+            <h3>加一条临时停药</h3>
+            <p class="h3sub">高频、轻量，字段尽可能少。</p>
+            <div class="modal-wf">
+              <div class="hd"><span class="t">加一条停药</span><span class="x">✕</span></div>
+              <div class="bd">
+                <div class="fld">
+                  <span class="lb">停哪个 <span class="req">*</span></span>
+                  <span class="inp-wf">鱼油 ▾</span>
+                  <span class="hint">列表末尾有「全部补剂」选项</span>
+                </div>
+                <div class="rowf">
+                  <div class="fld">
+                    <span class="lb">从哪天开始 <span class="req">*</span></span
+                    ><span class="inp-wf">2026-09-19</span>
+                  </div>
+                  <div class="fld">
+                    <span class="lb">到哪天结束</span><span class="inp-wf">2026-09-21</span>
+                    <span class="hint">留空 = 持续中，今日页显示「停用中 · 持续中」</span>
+                  </div>
+                </div>
+                <div class="fld">
+                  <span class="lb">原因（可留空）</span><span class="inp-wf">胃不舒服</span>
+                  <span class="hint">会显示在今日页，帮未来的你想起为什么停</span>
+                </div>
+              </div>
+              <div class="ft">
+                <span class="btn-wf">取消</span><span class="btn-wf pri">保存</span>
+              </div>
+            </div>
+            <ol class="notes">
+              <li>
+                <b>「原因」虽然可选，但要说明它的用处</b
+                >——它是未来回看时唯一的上下文。文案用「帮未来的你想起为什么停」，比「备注」有效。
+              </li>
+              <li>
+                <b>结束日留空是显式设计</b>，不是「没填完」。今日页对应显示「停用中 ·
+                持续中」，不显示恢复日期（v12.2 §9 第 11 步）。
+              </li>
+              <li>
+                <span class="tag decide">待确认</span>
+                是否需要「今天先不吃」的快捷入口（一键建一条今日起止的停药）？建议 M1
+                不做，观察真实使用频率。
+              </li>
+            </ol>
+          </div>
+
+          <div class="panel">
+            <h3>方案组编辑（M2）</h3>
+            <p class="h3sub">一套情景 = 一组补剂 + 各自的起止。</p>
+            <div class="modal-wf">
+              <div class="hd">
+                <span class="t">编辑方案组 · 抗生素期间</span><span class="x">✕</span>
+              </div>
+              <div class="bd">
+                <div class="fld">
+                  <span class="lb">方案名称 <span class="req">*</span></span
+                  ><span class="inp-wf">抗生素期间</span>
+                </div>
+                <div class="fld">
+                  <span class="lb"
+                    >包含哪些补剂 <span class="req">*</span><span class="pin">1</span></span
+                  >
+                  <div class="stack" style="gap: 7px">
+                    <div
+                      class="hstack"
+                      style="
+                        border: 1px solid var(--line);
+                        border-radius: 8px;
+                        padding: 7px 10px;
+                        justify-content: space-between;
+                      "
+                    >
+                      <span style="font-size: 12.5px"><b>维生素 D3</b></span>
+                      <span class="hstack" style="gap: 7px; font-size: 12px; color: var(--ink-3)">
+                        跟随方案 <span style="color: var(--ink-3)">·</span> 未设独立起止</span
+                      >
+                    </div>
+                    <div
+                      class="hstack"
+                      style="
+                        border: 1px solid var(--line);
+                        border-radius: 8px;
+                        padding: 7px 10px;
+                        justify-content: space-between;
+                      "
+                    >
+                      <span style="font-size: 12.5px"><b>钙片</b></span>
+                      <span class="hstack" style="gap: 7px; font-size: 12px; color: var(--ink-3)">
+                        跟随方案 <span style="color: var(--ink-3)">·</span> 未设独立起止</span
+                      >
+                    </div>
+                    <div
+                      class="hstack"
+                      style="
+                        border: 1px solid var(--line);
+                        border-radius: 8px;
+                        padding: 7px 10px;
+                        justify-content: space-between;
+                      "
+                    >
+                      <span style="font-size: 12.5px"><b>鱼油</b></span>
+                      <span class="hstack" style="gap: 7px; font-size: 12px; color: var(--ink-3)">
+                        独立起止 9/18 – 9/25</span
+                      >
+                    </div>
+                    <span class="btn-wf ghost" style="width: fit-content">+ 添加补剂</span>
+                  </div>
+                  <span class="hint"
+                    >条目无起止 = 随组生、随组灭；条目有起止 = 按自己的日期判定。</span
+                  >
+                </div>
+                <div class="fld">
+                  <span class="lb">备注（可留空）</span
+                  ><span class="inp-wf" style="height: 40px"></span>
+                </div>
+              </div>
+              <div class="ft">
+                <span class="btn-wf">取消</span><span class="btn-wf pri">保存</span>
+              </div>
+            </div>
+            <ol class="notes">
+              <li>
+                <b>「跟随方案」与「独立起止」必须在同一行内可见</b
+                >——这是全篇最容易混淆的一处。用户必须一眼看出这条到底听谁的，不能靠点开才知道。
+              </li>
+              <li>
+                <b>引用被删的补剂</b
+                >：条目保留并标注「已删除补剂」，判定时忽略；补剂恢复后自动重新生效。UI
+                上给一个灰色标签，不给删除按钮（否则会毁掉方案完整性）。
+              </li>
+            </ol>
+          </div>
+        </div>
+      </section>
+
+      <!-- ④ 日历页 -->
+      <section id="cal">
+        <div class="sec-head">
+          <span class="sec-num">04</span>
+          <h2>日历页</h2>
+          <span class="sub">M2 · 回答 Q3「昨天吃了吗」</span>
+        </div>
+        <p class="sec-desc">一屏一个月，四态可辨。点某日看详情，7 天内可补录。</p>
+
+        <div class="panel">
+          <h3>月历 + 日期详情</h3>
+          <p class="h3sub">左侧月历、右侧详情固定并排（PC 优先，不需要点开抽屉）。</p>
+          <div class="wf">
+            <div class="wf-cap">
+              <span class="lbl">日历 · 2026 年 9 月</span><span>四态可辨 · 右侧详情常驻</span>
+            </div>
+            <div class="wf-body noside">
+              <div class="main" style="display: grid; grid-template-columns: 1fr 268px; gap: 18px">
+                <div>
+                  <div class="hstack" style="justify-content: space-between; margin-bottom: 12px">
+                    <span class="hstack" style="gap: 8px"
+                      ><span class="btn-wf sm">‹</span
+                      ><span style="font-size: 14px; font-weight: 650">2026 年 9 月</span
+                      ><span class="btn-wf sm">›</span></span
+                    >
+                    <span class="btn-wf sm">回到今天</span>
+                  </div>
+                  <div class="cal">
+                    <span class="dow">一</span><span class="dow">二</span><span class="dow">三</span
+                    ><span class="dow">四</span><span class="dow">五</span
+                    ><span class="dow">六</span><span class="dow">日</span>
+
+                    <span class="d mut">31</span>
+                    <span class="d"
+                      >1
+                      <div class="marks">
+                        <i class="mk done"></i><i class="mk done"></i><i class="mk rest"></i></div
+                    ></span>
+                    <span class="d"
+                      >2
+                      <div class="marks">
+                        <i class="mk done"></i><i class="mk done"></i><i class="mk rest"></i></div
+                    ></span>
+                    <span class="d"
+                      >3
+                      <div class="marks">
+                        <i class="mk done"></i><i class="mk miss"></i><i class="mk rest"></i></div
+                    ></span>
+                    <span class="d"
+                      >4
+                      <div class="marks">
+                        <i class="mk done"></i><i class="mk done"></i><i class="mk rest"></i></div
+                    ></span>
+                    <span class="d"
+                      >5
+                      <div class="marks">
+                        <i class="mk done"></i><i class="mk done"></i><i class="mk rest"></i></div
+                    ></span>
+                    <span class="d"
+                      >6
+                      <div class="marks"><i class="mk rest"></i><i class="mk stop"></i></div
+                    ></span>
+
+                    <span class="d"
+                      >7
+                      <div class="marks">
+                        <i class="mk done"></i><i class="mk done"></i><i class="mk rest"></i></div
+                    ></span>
+                    <span class="d"
+                      >8
+                      <div class="marks">
+                        <i class="mk done"></i><i class="mk done"></i><i class="mk rest"></i></div
+                    ></span>
+                    <span class="d"
+                      >9
+                      <div class="marks">
+                        <i class="mk done"></i><i class="mk miss"></i><i class="mk rest"></i></div
+                    ></span>
+                    <span class="d"
+                      >10
+                      <div class="marks">
+                        <i class="mk done"></i><i class="mk done"></i><i class="mk rest"></i></div
+                    ></span>
+                    <span class="d"
+                      >11
+                      <div class="marks">
+                        <i class="mk done"></i><i class="mk done"></i><i class="mk rest"></i></div
+                    ></span>
+                    <span class="d"
+                      >12
+                      <div class="marks">
+                        <i class="mk done"></i><i class="mk done"></i><i class="mk rest"></i></div
+                    ></span>
+                    <span class="d"
+                      >13
+                      <div class="marks"><i class="mk rest"></i><i class="mk stop"></i></div
+                    ></span>
+
+                    <span class="d"
+                      >14
+                      <div class="marks">
+                        <i class="mk done"></i><i class="mk done"></i><i class="mk rest"></i></div
+                    ></span>
+                    <span class="d"
+                      >15
+                      <div class="marks">
+                        <i class="mk done"></i><i class="mk miss"></i><i class="mk rest"></i></div
+                    ></span>
+                    <span class="d"
+                      >16
+                      <div class="marks">
+                        <i class="mk done"></i><i class="mk done"></i><i class="mk rest"></i></div
+                    ></span>
+                    <span class="d"
+                      >17
+                      <div class="marks">
+                        <i class="mk done"></i><i class="mk done"></i><i class="mk rest"></i></div
+                    ></span>
+                    <span class="d"
+                      >18
+                      <div class="marks">
+                        <i class="mk done"></i><i class="mk stop"></i><i class="mk stop"></i></div
+                    ></span>
+                    <span class="d"
+                      >19
+                      <div class="marks">
+                        <i class="mk done"></i><i class="mk stop"></i><i class="mk stop"></i></div
+                    ></span>
+                    <span class="d today"
+                      >20
+                      <div class="marks">
+                        <i class="mk done"></i><i class="mk"></i><i class="mk stop"></i></div
+                    ></span>
+
+                    <span class="d mut">21</span><span class="d mut">22</span
+                    ><span class="d mut">23</span><span class="d mut">24</span>
+                    <span class="d mut">25</span><span class="d mut">26</span
+                    ><span class="d mut">27</span>
+                  </div>
+
+                  <div class="cal-legend">
+                    <span class="sw"
+                      ><i class="mk done" style="width: 11px; height: 11px"></i>已服用</span
+                    >
+                    <span class="sw"
+                      ><i class="mk rest" style="width: 11px; height: 11px"></i>今天休息</span
+                    >
+                    <span class="sw"
+                      ><i class="mk miss" style="width: 11px; height: 11px"></i>漏服</span
+                    >
+                    <span class="sw"
+                      ><i class="mk stop" style="width: 11px; height: 11px"></i>停用</span
+                    >
+                    <span class="sw">每格最多显示 3 个标记，更多时显示 <b>+N</b></span>
+                  </div>
+                </div>
+
+                <div style="border-left: 1px dashed var(--line); padding-left: 18px">
+                  <div style="font-size: 13.5px; font-weight: 700; margin-bottom: 3px">
+                    9 月 19 日 周六
+                  </div>
+                  <div style="font-size: 12px; color: var(--ink-3); margin-bottom: 12px">
+                    已吃 1 · 停用 2
+                  </div>
+
+                  <div
+                    class="dose taken"
+                    style="padding: 7px 9px; margin-bottom: 6px; grid-template-columns: 16px 1fr"
+                  >
+                    <span class="stg done" style="width: 13px; height: 13px"></span>
+                    <div>
+                      <div class="nm" style="font-size: 12.5px">鱼油</div>
+                      <div class="sub" style="font-size: 11.5px">2 粒 · 08:20</div>
+                    </div>
+                  </div>
+                  <div
+                    class="dose stop"
+                    style="padding: 7px 9px; margin-bottom: 6px; grid-template-columns: 16px 1fr"
+                  >
+                    <span class="stg stop" style="width: 13px; height: 13px"></span>
+                    <div>
+                      <div class="nm" style="font-size: 12.5px">维生素 D3</div>
+                      <div class="sub" style="font-size: 11.5px">停用中 · 抗生素期间</div>
+                    </div>
+                  </div>
+                  <div
+                    class="dose stop"
+                    style="padding: 7px 9px; margin-bottom: 12px; grid-template-columns: 16px 1fr"
+                  >
+                    <span class="stg stop" style="width: 13px; height: 13px"></span>
+                    <div>
+                      <div class="nm" style="font-size: 12.5px">钙片</div>
+                      <div class="sub" style="font-size: 11.5px">停用中 · 抗生素期间</div>
+                    </div>
+                  </div>
+
+                  <div class="fld" style="border-top: 1px dashed var(--line); padding-top: 12px">
+                    <span class="lb" style="font-size: 12px">补录 <span class="pin">1</span></span>
+                    <span class="btn-wf" style="width: 100%">+ 补录一条</span>
+                    <span class="hint">可补录最近 7 天（不含今天）</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <ol class="notes">
+            <li>
+              <b>补录入口按日期条件渲染</b>，三种情况文案不同： <br />· 7 天以内且当日有应服项 →
+              显示「+ 补录一条」 <br />· 超过 7 天 → 显示「超出补录窗口」，无按钮 <br />· 休息日 /
+              停用日 → 显示「今日休息」/「停用中 · X 日恢复」，<b>不给补录入口</b>（v12.2 §4.7）
+            </li>
+            <li>
+              <b>「漏服」不需要用户手动标记</b
+              >——过了当天仍未打卡，自动就是漏服标记。用户要做的只有补录。这条要写进代码与测试用例。
+            </li>
+            <li><b>今日用边框加粗而不是填充色</b>，避免和「已服用」的绿色填充混淆。</li>
+            <li><b>未来日期不可选</b>（灰显）。补录只能补过去。</li>
+            <li>
+              <span class="tag decide">待确认</span>
+              月历每格的标记是「按补剂」还是「按汇总」？现在是每补剂一个点，补剂多了会溢出。建议：每格最多
+              3 个点，超出显示 <code>+N</code>；点进详情看全部。
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- ⑤ 成分库 -->
+      <section id="ing">
+        <div class="sec-head">
+          <span class="sec-num">05</span>
+          <h2>成分库</h2>
+          <span class="sub">M3 · 跨补剂归并 + 每日汇总</span>
+        </div>
+        <p class="sec-desc">
+          两件事：管理成分主数据，以及看「今天一共吃进多少」。第二件事带合规边界，是本页最需要克制的地方。
+        </p>
+
+        <div class="grid2">
+          <div class="panel">
+            <h3>成分列表</h3>
+            <p class="h3sub"><code>name</code> 是跨补剂归并的唯一锚点。</p>
+            <div class="wf">
+              <div class="wf-cap">
+                <span class="lbl">成分库</span><span>参考值与上限均由用户自填</span>
+              </div>
+              <div class="wf-body noside">
+                <div class="main">
+                  <div class="pg-title">
+                    <span class="t">成分库</span
+                    ><span class="d"><span class="btn-wf pri">+ 新增成分</span></span>
+                  </div>
+                  <table class="twf">
+                    <thead>
+                      <tr>
+                        <th>成分名</th>
+                        <th>单位</th>
+                        <th>参考摄入量</th>
+                        <th>上限</th>
+                        <th>来源补剂</th>
+                        <th>操作</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><b>维生素 D3</b></td>
+                        <td>IU</td>
+                        <td>800（自填）</td>
+                        <td>—</td>
+                        <td>2 个 <span class="pin">1</span></td>
+                        <td>
+                          <span class="op"><span class="btn-wf sm">编辑</span></span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td><b>钙</b></td>
+                        <td>μg</td>
+                        <td>600000（自填）</td>
+                        <td>—</td>
+                        <td>1 个</td>
+                        <td>
+                          <span class="op"><span class="btn-wf sm">编辑</span></span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td><b>Omega-3</b></td>
+                        <td>mg</td>
+                        <td>—</td>
+                        <td>—</td>
+                        <td>1 个</td>
+                        <td>
+                          <span class="op"><span class="btn-wf sm">编辑</span></span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <div class="blk" style="margin-top: 12px; text-align: left; font-size: 12.5px">
+                    <b>系统不预置任何默认阈值</b
+                    >——参考摄入量与上限留空即为「不比较」，界面上不显示对应列。
+                  </div>
+                </div>
+              </div>
+            </div>
+            <ol class="notes">
+              <li>
+                <b>「来源补剂」可点</b>，展开显示「维生素 D3 被＜维生素 D3 胶囊 · 每份 1000 IU ·
+                生效 9/1 起＞、＜复合维生素 · 每份 400 IU · 生效 9/15
+                起＞包含」。这是检测重复成分、发现「两种补剂其实含同一种东西」的唯一入口。
+              </li>
+            </ol>
+          </div>
+
+          <div class="panel">
+            <h3>每日成分汇总（合规边界在这）</h3>
+            <p class="h3sub">只做累加与并列，不做判断。</p>
+            <div class="wf">
+              <div class="wf-cap">
+                <span class="lbl">今日成分汇总 · 9 月 20 日</span><span>口径：只统计已服用</span>
+              </div>
+              <div class="wf-body noside">
+                <div class="main">
+                  <div class="stack" style="gap: 9px">
+                    <div
+                      style="border: 1px solid var(--line); border-radius: 9px; padding: 11px 13px"
+                    >
+                      <div class="hstack" style="justify-content: space-between">
+                        <span style="font-size: 13.5px; font-weight: 650">维生素 D3</span>
+                        <span style="font-size: 12.5px; color: var(--ink-2)"
+                          >参考值 <b>800</b> &nbsp;/&nbsp; 今日 <b>1400</b> IU</span
+                        >
+                      </div>
+                      <div class="hstack" style="gap: 6px; margin-top: 8px">
+                        <span
+                          class="bar"
+                          style="width: 57%; height: 8px; background: #e6eaee"
+                        ></span>
+                        <span
+                          class="bar"
+                          style="width: 22%; height: 8px; background: #cbd5e1"
+                        ></span>
+                      </div>
+                      <div style="font-size: 11.5px; color: var(--ink-3); margin-top: 6px">
+                        来源：维生素 D3 胶囊 1000 + 复合维生素 400
+                      </div>
+                    </div>
+
+                    <div
+                      style="border: 1px solid var(--line); border-radius: 9px; padding: 11px 13px"
+                    >
+                      <div class="hstack" style="justify-content: space-between">
+                        <span style="font-size: 13.5px; font-weight: 650">钙</span>
+                        <span style="font-size: 12.5px; color: var(--ink-2)"
+                          >参考值 600000 &nbsp;/&nbsp; 今日 200000 μg</span
+                        >
+                      </div>
+                      <div style="font-size: 11.5px; color: var(--ink-3); margin-top: 6px">
+                        来源：钙片 200000
+                      </div>
+                    </div>
+
+                    <div
+                      style="border: 1px solid var(--line); border-radius: 9px; padding: 11px 13px"
+                    >
+                      <div class="hstack" style="justify-content: space-between">
+                        <span style="font-size: 13.5px; font-weight: 650">Omega-3</span>
+                        <span style="font-size: 12.5px; color: var(--ink-3)">未设参考值</span>
+                      </div>
+                      <div style="font-size: 11.5px; color: var(--ink-3); margin-top: 6px">
+                        来源：鱼油 1200 mg
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    class="blk"
+                    style="
+                      margin-top: 13px;
+                      text-align: left;
+                      background: #fff1f2;
+                      border-color: #fda4af;
+                      color: #9f1239;
+                      font-size: 12.5px;
+                    "
+                  >
+                    <b>红线：</b
+                    >此处<b>不得出现</b>「已超标」「过量」「建议减少」「有害」等结论性措辞。
+                    系统只做加法与并列展示，不解释含义。<span class="pin">1</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <ol class="notes">
+              <li>
+                <b>这是本模块唯一的合规红线。</b
+                >产品定性是记录工具、阈值全部由用户自填，一旦界面开始解释数字含义（哪怕只是颜色变红），性质就从「记录」滑向「营养建议」，风险等级直接升到高（v12.2
+                RK-05）。<b>建议：不设进度条着色、不设超限红色、不设告警图标。</b>上方线框里的双色条仅表示「参考值
+                / 今日」两段长度对照，不是「超出比例」。
+              </li>
+            </ol>
+          </div>
+        </div>
+
+        <div class="grid2" style="margin-top: 14px">
+          <div class="panel">
+            <h3>编辑成分</h3>
+            <p class="h3sub">单位存储统一为 μg，用户输入 mcg 自动转换。</p>
+            <div class="modal-wf">
+              <div class="hd"><span class="t">编辑成分</span><span class="x">✕</span></div>
+              <div class="bd">
+                <div class="rowf">
+                  <div class="fld">
+                    <span class="lb">成分名 <span class="req">*</span></span
+                    ><span class="inp-wf">维生素 D3</span>
+                    <span class="hint">跨补剂归并按名称匹配，请与瓶子上的写法保持一致</span>
+                  </div>
+                  <div class="fld">
+                    <span class="lb">单位 <span class="req">*</span></span
+                    ><span class="inp-wf">IU ▾</span>
+                    <span class="hint">IU 与 ml 独立累加，不与 μg 混算</span>
+                  </div>
+                </div>
+                <div class="rowf">
+                  <div class="fld">
+                    <span class="lb">参考摄入量</span><span class="inp-wf">800</span>
+                    <span class="hint">留空 = 不做比较</span>
+                  </div>
+                  <div class="fld">
+                    <span class="lb">上限</span><span class="inp-wf">—</span>
+                    <span class="hint">留空 = 不显示</span>
+                  </div>
+                </div>
+                <div class="fld">
+                  <span class="lb">备注（可留空）</span
+                  ><span class="inp-wf" style="height: 40px"></span>
+                </div>
+              </div>
+              <div class="ft">
+                <span class="btn-wf">取消</span><span class="btn-wf pri">保存</span>
+              </div>
+            </div>
+            <ol class="notes">
+              <li>
+                <b>改名要提示影响面</b>：改名等于换一个归并锚点。建议保存时提示「已有 N
+                个补剂关联此成分，改名后仍指向同一成分」——因为关联走的是
+                <code>ingredientId</code> 而不是名字，改名是安全的。这个提示是为了让用户放心。
+              </li>
+            </ol>
+          </div>
+
+          <div class="panel">
+            <h3>配方变更（补剂 ↔ 成分关联）</h3>
+            <p class="h3sub">改配方不修改原记录，用生效区间做版本管理。</p>
+            <div class="wf">
+              <div class="wf-cap">
+                <span class="lbl">补剂 · 成分关联</span><span>写在补剂编辑里，不单独开页面</span>
+              </div>
+              <div class="wf-body noside">
+                <div class="main">
+                  <div class="slot">包含成分 <span class="ln"></span></div>
+                  <table class="twf">
+                    <thead>
+                      <tr>
+                        <th>成分</th>
+                        <th>每份含量</th>
+                        <th>生效区间</th>
+                        <th>操作</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><b>维生素 D3</b></td>
+                        <td>1000 IU</td>
+                        <td>9/1 起 · 当前有效</td>
+                        <td>
+                          <span class="op"><span class="btn-wf sm">改配方</span></span>
+                        </td>
+                      </tr>
+                      <tr style="background: #fbfcfd">
+                        <td style="color: var(--ink-3)">维生素 D3</td>
+                        <td style="color: var(--ink-3)">500 IU</td>
+                        <td style="color: var(--ink-3)">8/1 – 8/31 · 已失效</td>
+                        <td>
+                          <span class="op"><span class="btn-wf sm">—</span></span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <div class="blk" style="margin-top: 12px; text-align: left; font-size: 12.5px">
+                    <b>「改配方」的写入规则：</b>不修改原记录，把原记录
+                    <code>effectiveTo</code> 设为昨日，新建一条
+                    <code>effectiveFrom</code> 为今日的记录。<br />
+                    <b>回看昨天的汇总时，用的是昨天的含量</b
+                    >——所以历史数字不会因为今天改配方而变动。
+                  </div>
+                </div>
+              </div>
+            </div>
+            <ol class="notes">
+              <li>
+                <b>已失效行保留可见但降饱和</b
+                >——用户需要看到「这个补剂改过配方」，而不是被删掉痕迹。
+              </li>
+              <li>
+                <span class="tag decide">待确认</span>
+                是否允许「修正录入错误」（把某条关联整体改掉而不是新起一段）？建议：允许，但放在次要位置，且提示会影响历史汇总。
+              </li>
+            </ol>
+          </div>
+        </div>
+      </section>
+
+      <!-- ⑥ 设置 -->
+      <section id="settings">
+        <div class="sec-head">
+          <span class="sec-num">06</span>
+          <h2>设置页</h2>
+          <span class="sub">§7 中的第 6 项 · M1 导出 + M3 完善</span>
+        </div>
+        <p class="sec-desc">纯本地应用，导出就是救命绳——D2 砍掉回收站之后，它是误删的唯一兜底。</p>
+
+        <div class="panel">
+          <div class="wf">
+            <div class="wf-cap">
+              <span class="lbl">设置</span><span>M1 只做导出导入，其余 M3</span>
+            </div>
+            <div class="wf-body noside">
+              <div class="main" style="max-width: 640px">
+                <div class="stack" style="gap: 14px">
+                  <div>
+                    <div class="slot" style="margin-top: 0">数据 <span class="ln"></span></div>
+                    <div class="hstack" style="gap: 9px">
+                      <span class="btn-wf pri">导出 JSON</span>
+                      <span class="btn-wf">导入 JSON</span>
+                      <span style="font-size: 12px; color: var(--ink-3)"
+                        >上次导出：2026-09-18 21:03</span
+                      >
+                    </div>
+                  </div>
+
+                  <div>
+                    <div class="slot">
+                      显示 <span class="tag m3">M3</span> <span class="ln"></span>
+                    </div>
+                    <div class="blk" style="text-align: left; font-size: 12.5px">
+                      默认时段 · 日期格式 · 是否显示余量 —— M3 再定，M1 用固定值
+                    </div>
+                  </div>
+
+                  <div>
+                    <div class="slot">危险区 <span class="ln"></span></div>
+                    <div class="hstack" style="gap: 9px">
+                      <span class="btn-wf" style="border-color: #fda4af; color: var(--rose)"
+                        >清除全部数据</span
+                      >
+                      <span style="font-size: 12px; color: var(--ink-3)"
+                        >需输入「清除」二次确认，且不可恢复</span
+                      >
+                    </div>
+                  </div>
+
+                  <div>
+                    <div class="slot">关于 <span class="ln"></span></div>
+                    <div style="font-size: 12.5px; color: var(--ink-2)">
+                      版本 0.2.0 ·
+                      隐私说明：<b>全部数据只存在本机浏览器</b>，不上传、不联网、不收集任何信息。
+                    </div>
+                  </div>
+
+                  <div
+                    class="blk"
+                    style="
+                      text-align: left;
+                      background: #fffbf5;
+                      border-color: #f0c36d;
+                      color: #92400e;
+                      font-size: 12.5px;
+                    "
+                  >
+                    <b>重要提示常驻：</b
+                    >本应用是记录工具，不是医疗建议。删除后无法恢复，请定期导出备份。
+                    <span class="btn-wf sm" style="margin-left: 6px">立即备份</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <ol class="notes">
+            <li>
+              <b>「上次导出时间」必须显示</b>——它让「你多久没备份了」变得可感知。超过 30
+              天未导出，M3 再补主动提醒。
+            </li>
+            <li><b>清除数据用输入文字二次确认</b>，不用普通确认框。破坏面太大，强度要对得上。</li>
+            <li>
+              <span class="tag m3">M3</span> 「显示」一栏 M1
+              不放任何开关——每一个设置项都是一个需要维护的决策，先不加。
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- ⑦ 通用状态 -->
+      <section id="states">
+        <div class="sec-head">
+          <span class="sec-num">07</span>
+          <h2>通用状态规范</h2>
+          <span class="sub">空 · 载 · 错 · 断网 · 反馈</span>
+        </div>
+        <p class="sec-desc">
+          这四个状态在每个页面都要有，最容易在开发时被漏掉，所以在这里一次性定义清楚，交付时逐个核对。
+        </p>
+
+        <div class="grid2">
+          <div class="panel">
+            <h3>加载中</h3>
+            <p class="h3sub">本地数据库通常很快，但要有兜底。</p>
+            <div class="wf">
+              <div class="wf-body noside">
+                <div class="main">
+                  <div class="stack" style="gap: 8px">
+                    <div class="ph" style="height: 44px"></div>
+                    <div class="ph" style="height: 44px"></div>
+                    <div class="ph" style="height: 44px"></div>
+                  </div>
+                  <div style="font-size: 12px; color: var(--ink-3); margin-top: 10px">
+                    骨架屏，不用转圈 spinner
+                  </div>
+                </div>
+              </div>
+            </div>
+            <ol class="notes">
+              <li>
+                <b>用骨架屏而不是全屏 loading</b>——保留页面结构感，避免闪一下白屏。超过 300ms
+                才显示骨架，避免快的时候反而闪。
+              </li>
+            </ol>
+          </div>
+
+          <div class="panel">
+            <h3>出错</h3>
+            <p class="h3sub">必须给出原因 + 重试，不能只说「出错了」。</p>
+            <div class="wf">
+              <div class="wf-body noside">
+                <div class="main">
+                  <div
+                    class="blk"
+                    style="text-align: left; background: #fff8f8; border-color: #fda4af"
+                  >
+                    <div
+                      style="
+                        font-size: 13.5px;
+                        color: #9f1239;
+                        font-weight: 650;
+                        margin-bottom: 5px;
+                      "
+                    >
+                      数据读取失败
+                    </div>
+                    <div style="font-size: 12.5px; margin-bottom: 12px">
+                      本地数据库可能被其他标签页占用。你的数据没有丢失。
+                    </div>
+                    <span class="btn-wf pri">重试</span>
+                    <span class="btn-wf" style="margin-left: 7px">导出备份</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <ol class="notes">
+              <li>
+                <b>错误文案要区分「数据可能丢了」与「数据还在」</b
+                >。个人工具里，用户最怕的是数据没了——先把这件事说清楚，再谈重试。
+              </li>
+              <li><b>错误状态里保留导出入口</b>：万一真的坏了，用户至少能把数据抢救出来。</li>
+            </ol>
+          </div>
+
+          <div class="panel">
+            <h3>空状态（三种，文案不同）</h3>
+            <p class="h3sub">空状态不是一种，至少三种。</p>
+            <div class="stack">
+              <div class="blk" style="text-align: left">
+                <b style="color: var(--ink-2)">首次使用</b><br />还没有要吃的补剂 →
+                主按钮「添加补剂」
+              </div>
+              <div class="blk" style="text-align: left">
+                <b style="color: var(--ink-2)">筛选无结果</b><br />没有符合条件的记录 →
+                次要按钮「清除筛选」
+              </div>
+              <div class="blk" style="text-align: left">
+                <b style="color: var(--ink-2)">全部关闭</b><br />所有补剂都已停用 →
+                次要按钮「去补剂页看看」
+              </div>
+            </div>
+            <ol class="notes">
+              <li>
+                <b>三种空状态不能共用同一句话。</b
+                >「首次使用」要给行动指引，「筛选无结果」要给出路，「全部关闭」要解释为什么空。
+              </li>
+            </ol>
+          </div>
+
+          <div class="panel">
+            <h3>断网与多标签页</h3>
+            <p class="h3sub">纯本地应用，这两个场景是常态而非异常。</p>
+            <div class="wf">
+              <div class="wf-body noside">
+                <div class="main">
+                  <div class="notice" style="background: #f8fafc; border-color: var(--line-2)">
+                    <span class="tx" style="color: var(--ink-2)"
+                      >未联网 · 功能不受影响，数据仍存在本机</span
+                    >
+                    <span class="btn-wf sm">知道了</span>
+                  </div>
+                  <div style="font-size: 12.5px; color: var(--ink-3); margin-top: 10px">
+                    可关闭的提示条，不阻塞操作。PWA 离线可用。
+                  </div>
+                  <div class="blk" style="text-align: left; margin-top: 12px; font-size: 12.5px">
+                    <b>多标签页：</b>一边打卡，另一边（同域名其他标签）自动刷新。 沿用现有
+                    <code>src/utils/broadcast.ts</code>，不需要新增机制。
+                  </div>
+                </div>
+              </div>
+            </div>
+            <ol class="notes">
+              <li>
+                <b>断网提示不阻塞</b
+                >，不弹窗、不遮罩。这是本地应用，断网本来就没影响，提示只是打消疑虑。
+              </li>
+            </ol>
+          </div>
+        </div>
+      </section>
+
+      <!-- ⑧ 待确认 -->
+      <section id="open">
+        <div class="sec-head">
+          <span class="sec-num">08</span>
+          <h2>线框提出的待确认事项</h2>
+          <span class="sub">需要你拍板，否则开发会自己替你决定</span>
+        </div>
+        <p class="sec-desc">
+          出线框的价值一半在画出来的东西，另一半在这里——绘制过程中暴露出的、v12.2 没写到粒度的问题。
+        </p>
+
+        <div class="panel">
+          <table class="plain">
+            <thead>
+              <tr>
+                <th style="width: 44px">#</th>
+                <th style="width: 150px">事项</th>
+                <th>问题</th>
+                <th style="width: 230px">建议</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><b>W-01</b></td>
+                <td>不吃项折叠阈值</td>
+                <td>
+                  同一时段「今天休息 + 停用中」≥ 3 项时折叠为一行，还是不折叠？不折叠在 8
+                  种补剂时必然滚动，违反「不滚动」硬要求。
+                </td>
+                <td><b>折叠不吃项，待吃 / 已吃永不折叠</b></td>
+              </tr>
+              <tr>
+                <td><b>W-02</b></td>
+                <td>余量偏低阈值</td>
+                <td>「余量 12（偏低）」的偏低温怎么定？做成用户可配置就要多一个设置项。</td>
+                <td><b>按剩余 ÷ 每次量 ≤ 5 天</b>，写死不配置</td>
+              </tr>
+              <tr>
+                <td><b>W-03</b></td>
+                <td>停药提醒条点击行为</td>
+                <td>点提醒条空白区是跳停药页，还是只提供「停止」按钮？</td>
+                <td><b>不跳转</b>，只保留「停止」</td>
+              </tr>
+              <tr>
+                <td><b>W-04</b></td>
+                <td>执行新方案组时的确认</td>
+                <td>执行新组会自动结束旧组，是否需要一句轻确认？</td>
+                <td><b>需要</b>，提示将结束哪一组</td>
+              </tr>
+              <tr>
+                <td><b>W-05</b></td>
+                <td>日历每格标记密度</td>
+                <td>每补剂一个点时，补剂多了会溢出。</td>
+                <td><b>每格最多 3 个点，超出显示 +N</b></td>
+              </tr>
+              <tr>
+                <td><b>W-06</b></td>
+                <td>补剂表单长度</td>
+                <td>9 个字段平铺稍长，是否收进「更多设置」？</td>
+                <td>先平铺，真实填写觉得累再折</td>
+              </tr>
+              <tr>
+                <td><b>W-07</b></td>
+                <td>「删除记录」的确认强度</td>
+                <td>撤销已是直接删；补录时的删除要不要同强度确认？</td>
+                <td><b>轻确认即可</b>，不套用删除补剂的强度</td>
+              </tr>
+              <tr>
+                <td><b>W-08</b></td>
+                <td>成分库改名提示</td>
+                <td>改名等于换归并锚点，要不要警告？</td>
+                <td><b>要提示但不用警告</b>——关联走 id，改名是安全的</td>
+              </tr>
+              <tr>
+                <td><b>W-09</b></td>
+                <td>「今天先不吃」快捷入口</td>
+                <td>是否提供一键建「今日起止」的停药？</td>
+                <td>M1 <b>不做</b>，观察真实频率</td>
+              </tr>
+              <tr>
+                <td><b>W-10</b></td>
+                <td>成分汇总的进度条</td>
+                <td>参考值与今日值是否用双色条对照？会不会已经构成「超标」的暗示？</td>
+                <td><b>建议去掉进度条，只并列数字</b>——最贴近合规边界的安全侧</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout warn">
+          <h4>其中 W-10 最重要</h4>
+          <p style="margin: 0; font-size: 13.5px; color: var(--ink-2)">
+            我在成分汇总线框里画了双色条来对照「参考值 /
+            今日」，但它离「进度条越满越危险」只有一步。v12.2 §6.9 第 4
+            条写死了「只做累加与并列，不做判断」，那么<b>最安全的形式就是纯数字并列</b>——不用颜色、不用长度、不用图标。我在线框里保留它只是让你看到这个风险，<b>建议最终实现时去掉</b>。
+          </p>
+        </div>
+
+        <div class="panel" style="margin-top: 14px">
+          <h3>线框 ↔ v12.2 条款对照</h3>
+          <p class="h3sub">确认线框没有偏离需求基线，也没有偷偷加需求。</p>
+          <table class="plain">
+            <thead>
+              <tr>
+                <th style="width: 230px">线框落点</th>
+                <th>v12.2 条款</th>
+                <th style="width: 110px">一致性</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>四态视觉规范（颜色 + 图形 + 文案三维度）</td>
+                <td>§4.3 四态 + P1 硬规则</td>
+                <td><span class="tag m1">一致</span></td>
+              </tr>
+              <tr>
+                <td>「下次 9/22」「9/30 恢复」必须出现</td>
+                <td>§4.3 P2</td>
+                <td><span class="tag m1">一致</span></td>
+              </tr>
+              <tr>
+                <td>休息 / 停用行不计入完成度分母（汇总行注明）</td>
+                <td>§4.3 P4</td>
+                <td><span class="tag m1">一致</span></td>
+              </tr>
+              <tr>
+                <td>「仍要服用」直接写入不弹确认</td>
+                <td>§4.3 P5</td>
+                <td><span class="tag m1">一致</span></td>
+              </tr>
+              <tr>
+                <td>已关闭 ≠ 今天休息，文案与视觉都不混用</td>
+                <td>§4.3 P6</td>
+                <td><span class="tag m1">一致</span></td>
+              </tr>
+              <tr>
+                <td>节奏四个用户语言入口（每天 / 隔天 / 每 N 天 / 吃 N 停 M）</td>
+                <td>§4.4 UI 预设</td>
+                <td><span class="tag m1">一致</span></td>
+              </tr>
+              <tr>
+                <td>节奏参数非法 → 今日页仍显示 + 管理页标「配置异常」</td>
+                <td>§4.4 判定失败方向「不隐藏」</td>
+                <td><span class="tag m1">一致</span></td>
+              </tr>
+              <tr>
+                <td>时段多选，不提供第二条计划入口</td>
+                <td>§6.2 计划唯一性约束</td>
+                <td><span class="tag m1">一致</span></td>
+              </tr>
+              <tr>
+                <td>打卡不跳转不滚动、幂等提示 + 追加一次</td>
+                <td>§4.2 主链路 + §4.6</td>
+                <td><span class="tag m1">一致</span></td>
+              </tr>
+              <tr>
+                <td>撤销直接删记录、余量加回、无二次确认</td>
+                <td>§4.6 + D1/B 定案</td>
+                <td><span class="tag m1">一致</span></td>
+              </tr>
+              <tr>
+                <td>删除补剂二次确认 + 历史记录默认一并删除</td>
+                <td>§5.2 + §6.9</td>
+                <td><span class="tag m1">一致</span></td>
+              </tr>
+              <tr>
+                <td>补录窗口 7 天，休息日 / 停用日不给补录入口</td>
+                <td>§4.7</td>
+                <td><span class="tag m2">一致</span></td>
+              </tr>
+              <tr>
+                <td>方案组「跟随方案 / 独立起止」行内可见</td>
+                <td>§4.5 方案组执行语义</td>
+                <td><span class="tag m2">一致</span></td>
+              </tr>
+              <tr>
+                <td>配方版本管理，回看按当日配方计算</td>
+                <td>§6.8 + §6.9 第 2 条</td>
+                <td><span class="tag m3">一致</span></td>
+              </tr>
+              <tr>
+                <td>成分汇总不出现结论性措辞</td>
+                <td>§6.9 第 4 条（合规边界）</td>
+                <td><span class="tag m3">一致</span></td>
+              </tr>
+              <tr>
+                <td>侧栏导航 M1 只出现 4 项</td>
+                <td>§7 页面清单 + 导航约束</td>
+                <td><span class="tag m1">一致</span></td>
+              </tr>
+              <tr>
+                <td>不做庆祝动效 / 连续打卡天数</td>
+                <td>L3 明确不做 + 合规红线</td>
+                <td><span class="tag m1">一致</span></td>
+              </tr>
+              <tr>
+                <td>窄屏只收侧栏，不做触摸手势与底部 Tab</td>
+                <td>D5 PC 优先 + L3</td>
+                <td><span class="tag m1">一致</span></td>
+              </tr>
+            </tbody>
+          </table>
+          <p style="margin: 12px 0 0; font-size: 13px; color: var(--ink-3)">
+            结论：<b>无新增需求</b>。线框只做了「把文字规则转成界面结构」，并额外暴露 10
+            项待确认粒度问题（W-01 ~ W-10）。移动端未做任何设计，符合 D5。
+          </p>
+        </div>
+      </section>
+
+      <footer>
+        <p>
+          补剂记录工具 · 原型线框 v1（低保真）· 2026-09-20 · 依据 v12.0-需求重梳理.md（v12.2）绘制
+        </p>
+        <p>
+          本稿只定结构与交互，不含视觉规范。目标平台 PC 优先（D5），窄屏仅保证「不破坏」。标注中的
+          <span class="tag decide">待确认</span> 项需拍板后才进入开发。
+        </p>
+        <p>
+          本方案为产品设计参考，具体实施请结合公司合规与法务要求确认。产品定性为记录工具：所有阈值由用户自行设定，系统仅做记录与提示，不构成任何医学建议。
+        </p>
+      </footer>
+    </div>
+  </body>
+</html>

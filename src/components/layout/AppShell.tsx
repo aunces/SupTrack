@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { cn } from '@/lib/utils'
+import { cn } from 'cn'
 
 const NAV = [
   { to: '/', label: '今日', end: true },

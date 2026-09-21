@@ -1,5 +1,5 @@
 import { useToastStore } from '@/stores/toastStore'
-import { cn } from '@/lib/utils'
+import { cn } from 'cn'
 import { X } from 'lucide-react'
 
 const VARIANT_CLASS = {

@@ -1,0 +1,1408 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>补剂记录工具 · 需求卡片 v12.2</title>
+    <style>
+      :root {
+        --bg: #f5f6f8;
+        --surface: #ffffff;
+        --surface-2: #fafbfc;
+        --text: #1f2328;
+        --text-2: #57606a;
+        --text-3: #8b949e;
+        --border: #e4e7eb;
+        --border-2: #d5dae0;
+        --accent: #4f46e5;
+        --accent-soft: #eef0ff;
+        --amber: #b45309;
+        --amber-soft: #fff7e6;
+        --amber-line: #f0c36d;
+        --emerald: #047857;
+        --emerald-soft: #ecfdf5;
+        --emerald-line: #6ee7b7;
+        --slate: #475569;
+        --slate-soft: #f1f5f9;
+        --slate-line: #cbd5e1;
+        --violet: #6d28d9;
+        --violet-soft: #f5f3ff;
+        --violet-line: #c4b5fd;
+        --rose: #be123c;
+        --rose-soft: #fff1f2;
+        --rose-line: #fda4af;
+        --radius: 14px;
+        --shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 6px 20px rgba(16, 24, 40, 0.05);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        -webkit-text-size-adjust: 100%;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
+          'Microsoft YaHei', sans-serif;
+        font-size: 15px;
+        line-height: 1.7;
+        -webkit-font-smoothing: antialiased;
+      }
+      .wrap {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 0 24px 80px;
+      }
+
+      /* ---------- Hero ---------- */
+      .hero {
+        background: linear-gradient(180deg, #ffffff 0%, #f7f8fb 100%);
+        border-bottom: 1px solid var(--border);
+        padding: 44px 0 32px;
+        margin-bottom: 28px;
+      }
+      .hero-inner {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 0 24px;
+      }
+      .kicker {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12.5px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        color: var(--accent);
+        background: var(--accent-soft);
+        padding: 4px 12px;
+        border-radius: 999px;
+        margin-bottom: 16px;
+      }
+      .kicker .dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--accent);
+      }
+      .hero h1 {
+        margin: 0 0 10px;
+        font-size: 34px;
+        line-height: 1.25;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+      }
+      .hero .lead {
+        margin: 0 0 20px;
+        font-size: 16.5px;
+        color: var(--text-2);
+        max-width: 760px;
+      }
+      .hero .lead b {
+        color: var(--text);
+        font-weight: 600;
+      }
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .chip {
+        font-size: 13px;
+        color: var(--text-2);
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 5px 11px;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+      }
+      .chip i {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--text-3);
+        font-style: normal;
+      }
+      .chip.ok i {
+        background: #10b981;
+      }
+      .chip.info i {
+        background: var(--accent);
+      }
+
+      /* ---------- TOC ---------- */
+      .toc {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        background: rgba(245, 246, 248, 0.88);
+        backdrop-filter: saturate(180%) blur(10px);
+        -webkit-backdrop-filter: saturate(180%) blur(10px);
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 28px;
+      }
+      .toc-inner {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 11px 24px;
+        display: flex;
+        gap: 6px;
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+      .toc-inner::-webkit-scrollbar {
+        display: none;
+      }
+      .toc a {
+        flex: 0 0 auto;
+        font-size: 13px;
+        color: var(--text-2);
+        text-decoration: none;
+        padding: 5px 11px;
+        border-radius: 8px;
+        white-space: nowrap;
+        transition: 0.15s;
+      }
+      .toc a:hover {
+        background: var(--surface);
+        color: var(--text);
+      }
+
+      /* ---------- Section ---------- */
+      section {
+        margin-bottom: 40px;
+        scroll-margin-top: 64px;
+      }
+      .sec-head {
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+      }
+      .sec-num {
+        font-size: 12.5px;
+        font-weight: 700;
+        color: var(--accent);
+        background: var(--accent-soft);
+        border-radius: 7px;
+        padding: 2px 9px;
+        letter-spacing: 0.02em;
+      }
+      .sec-head h2 {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 650;
+        letter-spacing: -0.005em;
+      }
+      .sec-head .sub {
+        font-size: 13px;
+        color: var(--text-3);
+      }
+
+      /* ---------- Cards ---------- */
+      .grid {
+        display: grid;
+        gap: 14px;
+      }
+      .g2 {
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      }
+      .g3 {
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      }
+      .g4 {
+        grid-template-columns: repeat(auto-fit, minmax(215px, 1fr));
+      }
+
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 18px 18px 16px;
+        box-shadow: var(--shadow);
+      }
+      .card h3 {
+        margin: 0 0 10px;
+        font-size: 15px;
+        font-weight: 650;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .card p {
+        margin: 0 0 8px;
+        color: var(--text-2);
+        font-size: 14px;
+      }
+      .card p:last-child {
+        margin-bottom: 0;
+      }
+      .card ul {
+        margin: 8px 0 0;
+        padding-left: 18px;
+        color: var(--text-2);
+        font-size: 14px;
+      }
+      .card li {
+        margin: 3px 0;
+      }
+
+      .tag {
+        font-size: 11.5px;
+        font-weight: 600;
+        padding: 1.5px 7px;
+        border-radius: 6px;
+        background: var(--slate-soft);
+        color: var(--slate);
+        flex: 0 0 auto;
+      }
+      .tag.done {
+        background: var(--emerald-soft);
+        color: var(--emerald);
+      }
+      .tag.cut {
+        background: var(--rose-soft);
+        color: var(--rose);
+      }
+      .tag.plan {
+        background: var(--amber-soft);
+        color: var(--amber);
+      }
+      .tag.m3 {
+        background: var(--violet-soft);
+        color: var(--violet);
+      }
+
+      /* state cards */
+      .state {
+        border-left: 4px solid var(--slate-line);
+      }
+      .state.s1 {
+        border-left-color: var(--amber-line);
+        background: linear-gradient(180deg, var(--amber-soft), #fff 62%);
+      }
+      .state.s2 {
+        border-left-color: var(--emerald-line);
+        background: linear-gradient(180deg, var(--emerald-soft), #fff 62%);
+      }
+      .state.s3 {
+        border-left-color: var(--slate-line);
+        background: linear-gradient(180deg, var(--slate-soft), #fff 62%);
+      }
+      .state.s4 {
+        border-left-color: var(--violet-line);
+        background: linear-gradient(180deg, var(--violet-soft), #fff 62%);
+      }
+      .state .nm {
+        font-size: 15.5px;
+        font-weight: 700;
+      }
+      .state .cond {
+        font-size: 12.5px;
+        color: var(--text-3);
+        margin: 2px 0 10px;
+      }
+      .state .quote {
+        font-size: 13.5px;
+        background: rgba(255, 255, 255, 0.85);
+        border: 1px dashed var(--border-2);
+        border-radius: 9px;
+        padding: 7px 10px;
+        color: var(--text);
+        font-family: ui-monospace, Menlo, Consolas, monospace;
+        margin-bottom: 8px;
+        word-break: break-all;
+      }
+      .state .acts {
+        font-size: 13px;
+        color: var(--text-2);
+      }
+
+      /* decision cards */
+      .decision {
+        position: relative;
+        padding-top: 20px;
+      }
+      .decision .did {
+        position: absolute;
+        top: -1px;
+        left: 18px;
+        transform: translateY(-50%);
+        font-size: 11.5px;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        background: var(--accent);
+        color: #fff;
+        border-radius: 6px;
+        padding: 2px 8px;
+        box-shadow: 0 2px 6px rgba(79, 70, 229, 0.25);
+      }
+      .decision .q {
+        font-size: 13px;
+        color: var(--text-3);
+        margin: 0 0 8px;
+      }
+      .decision .verdict {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 8px;
+      }
+      .decision .verdict .badge {
+        font-size: 12px;
+        font-weight: 700;
+        background: var(--emerald-soft);
+        color: var(--emerald);
+        border-radius: 6px;
+        padding: 1.5px 7px;
+      }
+      .decision .why {
+        font-size: 13.5px;
+        color: var(--text-2);
+        margin: 0;
+      }
+      .decision.override {
+        border-color: var(--amber-line);
+      }
+      .decision.override .did {
+        background: var(--amber);
+        box-shadow: 0 2px 6px rgba(180, 83, 9, 0.25);
+      }
+      .decision.override .verdict .badge {
+        background: var(--amber-soft);
+        color: var(--amber);
+      }
+
+      /* layer cards */
+      .layer {
+        border-top: 3px solid var(--slate-line);
+      }
+      .layer.l0 {
+        border-top-color: #10b981;
+      }
+      .layer.l1 {
+        border-top-color: #3b82f6;
+      }
+      .layer.l2 {
+        border-top-color: #f59e0b;
+      }
+      .layer.l3 {
+        border-top-color: #e11d48;
+      }
+      .layer .cnt {
+        font-size: 12.5px;
+        color: var(--text-3);
+      }
+
+      /* mini table */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13.5px;
+        margin-top: 6px;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 7px 10px;
+        border-bottom: 1px solid var(--border);
+        vertical-align: top;
+      }
+      th {
+        font-weight: 600;
+        color: var(--text-2);
+        background: var(--surface-2);
+        font-size: 12.5px;
+      }
+      tr:last-child td {
+        border-bottom: none;
+      }
+      td code {
+        font-family: ui-monospace, Menlo, Consolas, monospace;
+        font-size: 12.5px;
+        background: var(--slate-soft);
+        border-radius: 5px;
+        padding: 1px 5px;
+        color: #334155;
+      }
+      .tbl-wrap {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+        box-shadow: var(--shadow);
+      }
+
+      /* callout */
+      .callout {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-left: 4px solid var(--accent);
+        border-radius: var(--radius);
+        padding: 16px 18px;
+        box-shadow: var(--shadow);
+        margin-top: 14px;
+      }
+      .callout h4 {
+        margin: 0 0 8px;
+        font-size: 14px;
+        font-weight: 700;
+      }
+      .callout ul {
+        margin: 0;
+        padding-left: 18px;
+        font-size: 14px;
+        color: var(--text-2);
+      }
+      .callout.warn {
+        border-left-color: var(--rose);
+        background: linear-gradient(90deg, var(--rose-soft), #fff 40%);
+      }
+      .callout.done {
+        border-left-color: #10b981;
+        background: linear-gradient(90deg, var(--emerald-soft), #fff 40%);
+      }
+
+      /* checklist */
+      .checks {
+        counter-reset: c;
+        display: grid;
+        gap: 8px;
+      }
+      .checks.g2c {
+        grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+      }
+      .chk {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 9px 12px;
+        font-size: 13.5px;
+        box-shadow: 0 1px 2px rgba(16, 24, 40, 0.03);
+      }
+      .chk .n {
+        flex: 0 0 auto;
+        counter-increment: c;
+        font-size: 11.5px;
+        font-weight: 700;
+        color: var(--text-3);
+        background: var(--slate-soft);
+        border-radius: 6px;
+        padding: 1px 7px;
+        margin-top: 2px;
+        min-width: 24px;
+        text-align: center;
+      }
+      .chk .n::before {
+        content: counter(c);
+      }
+      .chk .body {
+        color: var(--text-2);
+      }
+      .chk .body b {
+        color: var(--text);
+        font-weight: 600;
+      }
+      .chk.m3row {
+        border-style: dashed;
+        opacity: 0.92;
+      }
+
+      /* flow */
+      .flow {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        font-size: 13.5px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px 18px;
+        box-shadow: var(--shadow);
+      }
+      .flow .step {
+        background: var(--accent-soft);
+        color: var(--accent);
+        font-weight: 600;
+        border-radius: 9px;
+        padding: 6px 12px;
+        font-size: 13px;
+      }
+      .flow .step.plain {
+        background: var(--slate-soft);
+        color: var(--slate);
+      }
+      .flow .arw {
+        color: var(--text-3);
+        font-weight: 700;
+      }
+
+      /* milestone */
+      .ms {
+        border-top: 4px solid var(--slate-line);
+      }
+      .ms.m1 {
+        border-top-color: #10b981;
+      }
+      .ms.m2 {
+        border-top-color: #3b82f6;
+      }
+      .ms.m3 {
+        border-top-color: #f59e0b;
+      }
+      .ms .dod {
+        margin-top: 10px;
+        font-size: 13px;
+        background: var(--surface-2);
+        border: 1px dashed var(--border-2);
+        border-radius: 9px;
+        padding: 9px 11px;
+        color: var(--text-2);
+      }
+      .ms .dod b {
+        color: var(--text);
+      }
+
+      /* do-not */
+      .dont {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      }
+      .dont .item {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 11px 13px;
+        font-size: 13.5px;
+      }
+      .dont .item .t {
+        font-weight: 650;
+        color: var(--text);
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin-bottom: 4px;
+      }
+      .dont .item .t::before {
+        content: '';
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--rose);
+        flex: 0 0 auto;
+      }
+      .dont .item .d {
+        color: var(--text-2);
+        font-size: 13px;
+      }
+
+      footer {
+        border-top: 1px solid var(--border);
+        margin-top: 36px;
+        padding-top: 20px;
+        font-size: 12.5px;
+        color: var(--text-3);
+      }
+      footer p {
+        margin: 0 0 6px;
+      }
+
+      @media (max-width: 640px) {
+        .hero {
+          padding: 30px 0 24px;
+        }
+        .hero h1 {
+          font-size: 25px;
+        }
+        .hero .lead {
+          font-size: 15px;
+        }
+        .wrap {
+          padding: 0 16px 60px;
+        }
+        .hero-inner {
+          padding: 0 16px;
+        }
+        .toc-inner {
+          padding: 10px 16px;
+        }
+        .card {
+          padding: 15px;
+        }
+      }
+      @media print {
+        body {
+          background: #fff;
+        }
+        .toc {
+          display: none;
+        }
+        .card,
+        .tbl-wrap,
+        .callout,
+        .flow {
+          box-shadow: none;
+          break-inside: avoid;
+        }
+        section {
+          break-inside: avoid;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="hero">
+      <div class="hero-inner">
+        <div class="kicker"><span class="dot"></span>需求卡片 · v12.2 决策收口版</div>
+        <h1>补剂记录工具</h1>
+        <p class="lead">
+          打开就看到<b>今天该吃什么、哪个不用吃</b> —— 5 秒闭环。整个产品只回答这一件事。
+        </p>
+        <div class="chips">
+          <span class="chip info"><i></i>产品定性：记录工具 · 不做医疗建议</span>
+          <span class="chip ok"><i></i>5 项决策已全部收口</span>
+          <span class="chip"><i></i>前置：无存量数据，重写零迁移</span>
+          <span class="chip"><i></i>本轮：只出需求，不碰代码</span>
+          <span class="chip"><i></i>2026-09-20</span>
+        </div>
+      </div>
+    </header>
+
+    <nav class="toc">
+      <div class="toc-inner">
+        <a href="#origin">① 原始需求</a>
+        <a href="#diag">② 跑偏诊断</a>
+        <a href="#decisions">③ 五项决策</a>
+        <a href="#concepts">④ 三个概念</a>
+        <a href="#states">⑤ 四种状态</a>
+        <a href="#layers">⑥ 需求分层</a>
+        <a href="#model">⑦ 数据模型</a>
+        <a href="#plan">⑧ 里程碑</a>
+        <a href="#walk">⑨ 验收走查</a>
+        <a href="#dont">⑩ 明确不做</a>
+      </div>
+    </nav>
+
+    <div class="wrap">
+      <!-- ① 原始需求 -->
+      <section id="origin">
+        <div class="sec-head">
+          <span class="sec-num">01</span>
+          <h2>原始需求：只有两件事</h2>
+          <span class="sub">一切复杂度的合法性来源</span>
+        </div>
+
+        <div class="grid g2">
+          <div class="card">
+            <h3>「某个补剂隔一天吃，怕记混」</h3>
+            <p><b>本质问题：</b>今天到底该不该吃？</p>
+            <p><b>验收标准：</b>打开就看到「今天吃 / 今天不吃，下次 X 日」</p>
+          </div>
+          <div class="card">
+            <h3>「还有停药期」</h3>
+            <p><b>本质问题：</b>有一段时间不吃，这段时间别提醒我。</p>
+            <p><b>验收标准：</b>停用期间该补剂整体静音，且说清什么时候恢复</p>
+          </div>
+        </div>
+
+        <div class="callout">
+          <h4>「怕记混」其实包含三个问题——它决定了功能边界</h4>
+          <ul>
+            <li><b>Q1 今天该吃什么？</b>→ 今日清单（四态）· <b>每天 1–3 次</b></li>
+            <li><b>Q2 我吃了吗？</b>→ 打卡 · <b>每天 3–7 次</b></li>
+            <li><b>Q3 昨天吃了吗？</b>→ 回看 / 日历 · 偶尔（怀疑记错时）</li>
+          </ul>
+          <p style="margin: 10px 0 0; font-size: 13.5px; color: var(--text-2)">
+            Q1 + Q2 是每天发生的高频动作，Q3 是低频补位。<b
+              >现有系统的绝大部分复杂度，都花在既不回答 Q1、也不回答 Q2 / Q3 的地方。</b
+            >
+          </p>
+        </div>
+      </section>
+
+      <!-- ② 跑偏诊断 -->
+      <section id="diag">
+        <div class="sec-head">
+          <span class="sec-num">02</span>
+          <h2>跑偏诊断</h2>
+          <span class="sub">把「记录工具」当成「库存系统」做了</span>
+        </div>
+
+        <div class="grid g3">
+          <div class="card">
+            <h3>约 45% 规范篇幅</h3>
+            <p>服务于「库存与撤销的正确性」这一个问题，而它不回答用户的任何一个疑问。</p>
+          </div>
+          <div class="card">
+            <h3>根源是一个技术选择</h3>
+            <p>
+              用<b>软删除</b>实现「撤销」。为回答「恢复一条被撤销的记录时，要不要再扣一次库存」，长出了整套机制。
+            </p>
+          </div>
+          <div class="card">
+            <h3>一次性归零</h3>
+            <p>把撤销改成「直接删记录 + 余量加回」，以下全部消失：</p>
+            <ul>
+              <li>4 态 <code>stockState</code> 状态机</li>
+              <li>StockLog 库存流水表</li>
+              <li>purge 语义</li>
+              <li>unknown 二选一对话框</li>
+              <li>双扣警告</li>
+            </ul>
+            <p style="margin-top: 8px; font-size: 13px; color: var(--text-3)">合计约 300 行规范</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ③ 五项决策 -->
+      <section id="decisions">
+        <div class="sec-head">
+          <span class="sec-num">03</span>
+          <h2>五项决策 · 全部收口</h2>
+          <span class="sub">2026-09-20 定案，本卡片即开发基线</span>
+        </div>
+
+        <div class="grid g3">
+          <div class="card decision">
+            <span class="did">D1</span>
+            <p class="q">余量要不要自动扣？</p>
+            <div class="verdict">单一数字，自动加减 <span class="badge">方案 B</span></div>
+            <p class="why">
+              补剂上一个整数余量，可留空。打卡减、撤销加。不做流水、不做状态机、不做批次——保留「还能吃几天」的价值，同时让状态机规范整块归零。
+            </p>
+          </div>
+
+          <div class="card decision">
+            <span class="did">D2</span>
+            <p class="q">回收站与软删除要不要留？</p>
+            <div class="verdict">砍掉，硬删除 + 确认 <span class="badge">方案 A</span></div>
+            <p class="why">
+              复杂度大头。改硬删除 + 二次确认，删除框内提示「建议先导出备份」；误删靠导出兜底。
+            </p>
+          </div>
+
+          <div class="card decision">
+            <span class="did">D3</span>
+            <p class="q">成分库与每日汇总做不做？</p>
+            <div class="verdict">完整保留，放 M3 <span class="badge">定案</span></div>
+            <p class="why">
+              两表 M3
+              追加，直接搬现有实现（与库存状态机无耦合），仅把汇总口径改为「只统计已服用记录」。不进
+              M1。
+            </p>
+          </div>
+
+          <div class="card decision">
+            <span class="did">D4</span>
+            <p class="q">重构策略选哪条？</p>
+            <div class="verdict">换心脏、留脚手架 <span class="badge">方案 A</span></div>
+            <p class="why">
+              数据模型与主链页面重写；Dexie / Zod / 导出导入 / PWA / 组件库 /
+              测试脚手架直接搬。无存量数据 → 重写零迁移成本。
+            </p>
+          </div>
+
+          <div class="card decision override">
+            <span class="did">D5</span>
+            <p class="q">目标平台以哪个为主？</p>
+            <div class="verdict">PC 优先 <span class="badge">用户指定</span></div>
+            <p class="why">
+              <b>未采纳原「手机优先」建议。</b
+              >移动适配后期再说；窄屏可用从「必须优先满足」下调为「不破坏」（不横向滚动、不遮挡入口），移动端专门适配列入明确不做。
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ④ 三个概念 -->
+      <section id="concepts">
+        <div class="sec-head">
+          <span class="sec-num">04</span>
+          <h2>整个产品只有三个概念</h2>
+          <span class="sub">补剂 · 计划 · 停药</span>
+        </div>
+
+        <div class="grid g3">
+          <div class="card">
+            <h3>补剂</h3>
+            <p style="color: var(--text-3); font-size: 13px; margin-bottom: 6px">
+              回答：我有哪些？
+            </p>
+            <p>一个名字 + 每次吃多少 + 单位；余量可选。</p>
+          </div>
+          <div class="card">
+            <h3>计划</h3>
+            <p style="color: var(--text-3); font-size: 13px; margin-bottom: 6px">
+              回答：我该什么时候吃？
+            </p>
+            <p><b>节奏是计划的属性</b>：每天 / 隔天 / 每 N 天一次 / 吃 N 停 M；再配服用时段。</p>
+          </div>
+          <div class="card">
+            <h3>停药</h3>
+            <p style="color: var(--text-3); font-size: 13px; margin-bottom: 6px">
+              回答：我什么时候不该吃？
+            </p>
+            <p>
+              一段<b>有起止</b>的暂停。两种用法：临时停药（单条）、方案组（成套情景，一键执行/停止）。
+            </p>
+          </div>
+        </div>
+
+        <div class="callout">
+          <h4>全篇最重要的一条划分</h4>
+          <ul>
+            <li><b>节奏只表达「该吃的日子」，不表达「不吃的原因」</b>——隔天吃的休息日不是停药</li>
+            <li><b>停药只表达「这段时间不吃」，不表达节奏</b>——停药期不得再承载周期性</li>
+            <li>二者重叠时，<b>停药优先</b></li>
+          </ul>
+          <p style="margin: 10px 0 0; font-size: 13.5px; color: var(--text-2)">
+            这样划分之后，「隔天吃」用计划的一个属性就能表达，<b
+              >不再需要用「计划 + 周期性停药期」两个对象拼出来</b
+            >——后者正是现有系统把用户自设的常规节奏渲染成「停药中」异常状态的原因。
+          </p>
+        </div>
+      </section>
+
+      <!-- ⑤ 四种状态 -->
+      <section id="states">
+        <div class="sec-head">
+          <span class="sec-num">05</span>
+          <h2>四种状态</h2>
+          <span class="sub">某补剂在某日只有这四种，必须各有独立视觉与独立文案</span>
+        </div>
+
+        <div class="grid g4">
+          <div class="card state s1">
+            <div class="nm">待服用</div>
+            <div class="cond">该吃 且 尚无记录</div>
+            <div class="quote">待服用 1 粒</div>
+            <div class="acts">主按钮：<b>打卡</b></div>
+          </div>
+          <div class="card state s2">
+            <div class="nm">已服用</div>
+            <div class="cond">该吃 且 已有记录</div>
+            <div class="quote">已服用 1 粒 · 早上</div>
+            <div class="acts">主按钮：<b>撤销</b>　次要：追加一次</div>
+          </div>
+          <div class="card state s3">
+            <div class="nm">今天休息</div>
+            <div class="cond">节奏排到的不吃日，且未落在停药期</div>
+            <div class="quote">今天不用吃 · 下次 9/22</div>
+            <div class="acts">无主按钮　次要：仍要服用</div>
+          </div>
+          <div class="card state s4">
+            <div class="nm">停用中</div>
+            <div class="cond">落在停药期内（无论节奏）</div>
+            <div class="quote">停用中 · 抗生素期间 · 9/30 恢复</div>
+            <div class="acts">无主按钮　次要：仍要服用</div>
+          </div>
+        </div>
+
+        <div class="callout">
+          <h4>六条硬规则</h4>
+          <ul>
+            <li>
+              <b>P1</b> 「休息」与「停用」必须是两个不同的词。禁止再用「停药中」表示节奏休息日
+            </li>
+            <li>
+              <b>P2</b> 每条「不吃」的项都必须给出<b>下一个该吃的日期</b>——这是「怕记混」的核心解药
+            </li>
+            <li><b>P3</b> 休息日 / 停用日<b>不产生漏服提醒</b></li>
+            <li><b>P4</b> 休息日 / 停用日<b>不计入完成度分母</b></li>
+            <li>
+              <b>P5</b> 休息日 /
+              停用期仍允许记录服用，<b>不弹二次确认</b>——本产品是记录工具，不为用户的决定设障，但记录行须标注来源
+            </li>
+            <li>
+              <b>P6</b>
+              计划被整体关闭（<code>isActive=false</code>）与节奏休息是两件事，文案不得混用
+            </li>
+          </ul>
+        </div>
+
+        <div class="flow" style="margin-top: 14px">
+          <span class="step plain">打开应用</span><span class="arw">→</span>
+          <span class="step">今日页按时段列出清单</span><span class="arw">→</span>
+          <span class="step">一眼看到：待吃 2 · 已吃 1 · 今天不用吃 2</span
+          ><span class="arw">→</span>
+          <span class="step">点「打卡」→ 行变「已服用」</span>
+        </div>
+        <p style="font-size: 13px; color: var(--text-2); margin: 10px 2px 0">
+          硬要求（以 PC
+          宽屏为基准）：从打开到完成一次打卡，<b>不需要滚动、不需要跳转、不需要二次确认</b>。窄屏下允许滚动，但打卡入口不得被遮挡。
+        </p>
+      </section>
+
+      <!-- ⑥ 需求分层 -->
+      <section id="layers">
+        <div class="sec-head">
+          <span class="sec-num">06</span>
+          <h2>需求分层</h2>
+          <span class="sub">L0 核心 / L1 支撑 / L2 增值 / L3 明确不做</span>
+        </div>
+
+        <div class="grid g2">
+          <div class="card layer l0">
+            <h3>L0 · 核心 <span class="tag done">M1 交付</span></h3>
+            <p class="cnt">7 项 · 缺一不可</p>
+            <ul>
+              <li><b>C-01</b> 记录补剂（名称、每次吃几个、单位）</li>
+              <li><b>C-02</b> 给补剂设计划：每天 / 隔天 / 每 N 天一次 / 吃 N 停 M</li>
+              <li><b>C-03</b> 计划含服用时段（早 / 中 / 晚 / 睡前）</li>
+              <li><b>C-04</b> 今日页：按时段列出「今天该吃什么」，四态清晰</li>
+              <li><b>C-05</b> 打卡（一次点击）与撤销</li>
+              <li><b>C-06</b> 停药期：一段有起止的暂停，期间该补剂静音</li>
+              <li><b>C-07</b> 数据存本地、可离线打开</li>
+            </ul>
+          </div>
+
+          <div class="card layer l1">
+            <h3>L1 · 支撑 <span class="tag done">M1 内完成</span></h3>
+            <p class="cnt">4 项 · 必须有，但要做到极简</p>
+            <ul>
+              <li><b>S-01</b> 余量记录 —— 单一数字，打卡减、撤销加</li>
+              <li><b>S-02</b> 删除 —— 硬删除 + 二次确认</li>
+              <li><b>S-03</b> 一键导出 JSON 兜底 —— 误删不可恢复，靠手动备份</li>
+              <li>
+                <b>S-04</b> PC 优先，窄屏不破坏 —— 侧边导航 +
+                键盘可操作；窄屏仅要求不横向滚动、不遮挡入口
+              </li>
+            </ul>
+          </div>
+
+          <div class="card layer l2">
+            <h3>L2 · 增值 <span class="tag plan">M2 / M3</span></h3>
+            <p class="cnt">7 项 · 按需再做</p>
+            <ul>
+              <li><b>V-01</b> 日历回看（一屏一个月，四态可辨）· M2</li>
+              <li><b>V-02</b> 补录：昨天忘了打，今天补一下（窗口 7 天）· M2</li>
+              <li><b>V-03</b> 停药方案组：成套情景预设 + 一键切换 · M2</li>
+              <li><b>V-04</b> 「仍要服用」：休息日 / 停用期也能记一笔 · M2</li>
+              <li><b>V-05</b> 过期提醒、余量不足提醒 · M3</li>
+              <li><b>V-06</b> 成分库与每日成分汇总 · M3 <span class="tag m3">已定案</span></li>
+              <li><b>V-07</b> 备份提醒、统计图表 · M3</li>
+            </ul>
+          </div>
+
+          <div class="card layer l3">
+            <h3>L3 · 明确不做 <span class="tag cut">越界即范围蔓延</span></h3>
+            <p class="cnt">本轮及可预见范围内</p>
+            <ul>
+              <li>软删除与回收站（D2 已砍）</li>
+              <li>库存 4 态状态机 + 库存流水 StockLog</li>
+              <li>unknown 记录二选一对话框、双扣警告</li>
+              <li>记录状态四枚举 → 降为「吃了 / 没吃」+ 额外标记</li>
+              <li>计划量快照三态、历史真实性过滤</li>
+              <li>8 跳 Schema 迁移链（无存量数据）</li>
+              <li>移动端专门适配（触摸手势、底部导航、44px 热区、安全区）</li>
+              <li>身体反馈、库存批次、快速录入组合</li>
+              <li>成分冲突 / 超标提醒（接近医学判断）</li>
+              <li>统计报表（现有代码连路由入口都没有）</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- ⑦ 数据模型 -->
+      <section id="model">
+        <div class="sec-head">
+          <span class="sec-num">07</span>
+          <h2>数据模型</h2>
+          <span class="sub">能用一个数字表达的，不建一张表；能用布尔表达的，不建枚举</span>
+        </div>
+
+        <div class="tbl-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 52px">表</th>
+                <th style="width: 180px">名称</th>
+                <th>关键字段与要点</th>
+                <th style="width: 90px">里程碑</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>1</code></td>
+                <td>
+                  <b>Supplement</b><br /><span style="font-size: 12.5px; color: var(--text-3)"
+                    >补剂</span
+                  >
+                </td>
+                <td>
+                  name · unitType · <b>stockCount（余量，可选，单一数字）</b> · stockUnit /
+                  unitsPerStock（仅 UI 换算）· expiryDate · notes
+                </td>
+                <td><span class="tag done">本轮</span></td>
+              </tr>
+              <tr>
+                <td><code>2</code></td>
+                <td>
+                  <b>DosagePlan</b><br /><span style="font-size: 12.5px; color: var(--text-3)"
+                    >计划（含节奏）</span
+                  >
+                </td>
+                <td>
+                  supplementId · amountPerTime · timeSlots[] · rateMode（daily/cyclic）· rateOnDays
+                  / rateOffDays / rateAnchorDate · isActive<br /><span
+                    style="font-size: 12.5px; color: var(--rose)"
+                    >约束：同一补剂的启用计划，时段不得重叠</span
+                  >
+                </td>
+                <td><span class="tag done">本轮</span></td>
+              </tr>
+              <tr>
+                <td><code>3</code></td>
+                <td>
+                  <b>DailyIntake</b><br /><span style="font-size: 12.5px; color: var(--text-3)"
+                    >记录</span
+                  >
+                </td>
+                <td>
+                  date（服用归属日，补录时为所选历史日）· supplementId · planId? · timeSlot · amount
+                  · <b>taken（布尔）</b> · <b>isExtra</b> · createdAt（真实写入时间，与 date
+                  不同则标「补录」）
+                </td>
+                <td><span class="tag done">本轮</span></td>
+              </tr>
+              <tr>
+                <td><code>4</code></td>
+                <td>
+                  <b>PausePeriod</b><br /><span style="font-size: 12.5px; color: var(--text-3)"
+                    >停药</span
+                  >
+                </td>
+                <td>
+                  schemeId? · supplementId 或 <code>'ALL'</code> · startDate? · endDate?（空 =
+                  持续中）· reason
+                </td>
+                <td><span class="tag done">本轮</span></td>
+              </tr>
+              <tr>
+                <td><code>5</code></td>
+                <td>
+                  <b>PauseScheme</b><br /><span style="font-size: 12.5px; color: var(--text-3)"
+                    >停药方案组</span
+                  >
+                </td>
+                <td>
+                  name（如「抗生素期间」）· isActive · activatedAt / endedAt<br /><span
+                    style="font-size: 12.5px; color: var(--text-3)"
+                    >同一时刻至多一组执行中</span
+                  >
+                </td>
+                <td><span class="tag done">本轮</span></td>
+              </tr>
+              <tr>
+                <td><code>6</code></td>
+                <td>
+                  <b>Meta</b><br /><span style="font-size: 12.5px; color: var(--text-3)"
+                    >元数据</span
+                  >
+                </td>
+                <td>key / value —— schemaVersion · lastExportAt · appVersion</td>
+                <td><span class="tag done">本轮</span></td>
+              </tr>
+              <tr>
+                <td><code>7</code></td>
+                <td>
+                  <b>Ingredient</b><br /><span style="font-size: 12.5px; color: var(--text-3)"
+                    >成分</span
+                  >
+                </td>
+                <td>
+                  name（<b>跨补剂归并的唯一锚点</b>）· unit（mg/μg/g/IU/ml，存储统一 μg）·
+                  recommendedDailyIntake? · upperLimit?（<b>用户自填，系统不预置</b>）
+                </td>
+                <td><span class="tag m3">M3</span></td>
+              </tr>
+              <tr>
+                <td><code>8</code></td>
+                <td>
+                  <b>SupplementIngredient</b><br /><span
+                    style="font-size: 12.5px; color: var(--text-3)"
+                    >补剂-成分关联</span
+                  >
+                </td>
+                <td>
+                  supplementId · ingredientId · amountPerServing ·
+                  <b>effectiveFrom / effectiveTo</b
+                  >（配方版本管理：改配方不修改原记录，旧记录失效日＝昨日，新建今日生效）
+                </td>
+                <td><span class="tag m3">M3</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout" style="margin-top: 14px">
+          <h4>每日成分汇总口径（M3）—— 四条必须写死的规则</h4>
+          <ul>
+            <li><b>1</b> 只统计 <code>taken = true</code> 的记录</li>
+            <li>
+              <b>2</b> 按
+              <code>date</code>
+              匹配当时有效的配方，<b>不按录入时刻</b>（回看昨天，用的是昨天的含量）
+            </li>
+            <li><b>3</b> mg / μg / g 归一到 μg 后累加；<b>IU 与 ml 独立累加，不与 μg 混算</b></li>
+            <li>
+              <b>4</b> <b>只做累加与并列，不做判断</b>——可以显示「参考值 800 / 今日
+              1200」，不得出现「过量」「有害」「建议减少」
+            </li>
+          </ul>
+          <p style="margin: 10px 0 0; font-size: 13.5px; color: var(--text-2)">
+            第 4
+            条是本模块的<b>合规边界</b>。产品定性是记录工具、阈值全部由用户自填，系统只做加法与并列展示，不解释含义。
+          </p>
+        </div>
+      </section>
+
+      <!-- ⑧ 里程碑 -->
+      <section id="plan">
+        <div class="sec-head">
+          <span class="sec-num">08</span>
+          <h2>开发路径：换心脏，留脚手架</h2>
+          <span class="sub">三个里程碑，M1 做完即可替换现有应用</span>
+        </div>
+
+        <div class="grid g3">
+          <div class="card ms m1">
+            <h3>M1 · 核心闭环 <span class="tag done">先做</span></h3>
+            <p>今日页四态清单 + 打卡 + 撤销；补剂页含节奏配置；单条临时停药；本地存储 + 离线。</p>
+            <div class="dod">
+              <b>完成定义：</b>建 3 个补剂（其中一个隔天吃）→ 首页正确显示今天吃什么 → 打勾 →
+              <b>第二天打开答案仍然正确</b>
+            </div>
+          </div>
+          <div class="card ms m2">
+            <h3>M2 · 回看与补录</h3>
+            <p>日历四态可辨；补录（窗口 7 天）；停药方案组；「仍要服用」。</p>
+            <div class="dod"><b>完成定义：</b>翻回上周，能一眼看出哪天漏了、哪天在停药</div>
+          </div>
+          <div class="card ms m3">
+            <h3>M3 · 增值</h3>
+            <p>成分库与每日成分汇总（已定案）、余量提醒、备份提醒、统计。</p>
+            <div class="dod"><b>完成定义：</b>随便挑一个砍掉，不影响 M1 / M2 使用</div>
+          </div>
+        </div>
+
+        <div class="callout done" style="margin-top: 14px">
+          <h4>「搬」而不是「重写」的部分</h4>
+          <p style="margin: 0; font-size: 14px; color: var(--text-2)">
+            Dexie 封装与事务写法 · Zod 校验模式 · 导出导入与备份 · 离线 / PWA 配置 · UI
+            组件库与布局外壳 · 测试脚手架（Vitest + fake-indexeddb）
+          </p>
+          <p style="margin: 8px 0 0; font-size: 14px; color: var(--text-2)">
+            <b>重写：</b
+            >数据模型、四态判定、今日页、计划与节奏、停药与方案组、库存扣减逻辑。<b>删除：</b>整块库存状态机、8
+            跳迁移链。
+          </p>
+        </div>
+      </section>
+
+      <!-- ⑨ 验收走查 -->
+      <section id="walk">
+        <div class="sec-head">
+          <span class="sec-num">09</span>
+          <h2>人工走查验收清单</h2>
+          <span class="sub">第 1–16 步属 M1，第 17–21 步属 M3</span>
+        </div>
+
+        <div class="checks g2c">
+          <div class="chk">
+            <span class="n"></span
+            ><span class="body"
+              >建补剂 A，节奏＝隔天，锚点＝今天 → A 出现在今日页，显示「待服用」</span
+            >
+          </div>
+          <div class="chk">
+            <span class="n"></span
+            ><span class="body"
+              >查看明天 → 显示「今天不用吃 · 下次 X 日」，<b>不出现「停药中」</b></span
+            >
+          </div>
+          <div class="chk">
+            <span class="n"></span
+            ><span class="body">建补剂 B，节奏＝吃 5 停 2 → 第 6、7 天显示「今天不用吃」</span>
+          </div>
+          <div class="chk">
+            <span class="n"></span
+            ><span class="body">锚点设为未来日期 → 锚点之前<b>不出现</b>该补剂，不报错</span>
+          </div>
+          <div class="chk">
+            <span class="n"></span
+            ><span class="body"
+              >同一补剂同时段建第二条计划 → <b>被阻止</b>，提示已有计划，请合并或改时段</span
+            >
+          </div>
+          <div class="chk">
+            <span class="n"></span
+            ><span class="body">今日页打卡 A → 行变「已服用」，余量减少，可撤销</span>
+          </div>
+          <div class="chk">
+            <span class="n"></span
+            ><span class="body">再次点击打卡 → 提示「今天已打卡」，提供「追加一次」</span>
+          </div>
+          <div class="chk">
+            <span class="n"></span
+            ><span class="body">点撤销 → 记录删除，<b>余量加回</b>，无需二次确认</span>
+          </div>
+          <div class="chk">
+            <span class="n"></span
+            ><span class="body"
+              >给 A 建停药期覆盖明天，查看明天 → 显示「停用中 · X 日恢复」，<b
+                >停用优先于休息</b
+              ></span
+            >
+          </div>
+          <div class="chk">
+            <span class="n"></span
+            ><span class="body"
+              >在停用中的行点「仍要服用」→
+              直接写入不弹确认，记录标注「停药期服用」，不计入完成度</span
+            >
+          </div>
+          <div class="chk">
+            <span class="n"></span
+            ><span class="body">停药期无结束日期 → 显示「停用中 · 持续中」，不显示恢复日期</span>
+          </div>
+          <div class="chk">
+            <span class="n"></span
+            ><span class="body">打开两个标签页，一边打卡 → 另一边自动刷新</span>
+          </div>
+          <div class="chk">
+            <span class="n"></span><span class="body">断网后打开应用并打卡 → 全部功能正常</span>
+          </div>
+          <div class="chk">
+            <span class="n"></span><span class="body">导出 JSON → 清除数据 → 导入 → 完整还原</span>
+          </div>
+          <div class="chk">
+            <span class="n"></span
+            ><span class="body"
+              ><b>把浏览器窗口缩到窄屏（≈375px）重做第 1、6 步</b> →
+              不横向滚动、不遮挡打卡按钮、入口不缺失（不要求一屏不滚动）</span
+            >
+          </div>
+          <div class="chk">
+            <span class="n"></span
+            ><span class="body"
+              ><b>全程只用键盘完成第 1、6 步</b>（Tab 聚焦 + Enter 打卡）→
+              可聚焦、可触发、焦点可见</span
+            >
+          </div>
+
+          <div class="chk m3row">
+            <span class="n"></span
+            ><span class="body"
+              ><span class="tag m3">M3</span> 建成分 D3（IU），给 A 关联「每份 1000 IU」，打卡 A →
+              汇总「维生素 D3 合计 1000 IU」，来源 A</span
+            >
+          </div>
+          <div class="chk m3row">
+            <span class="n"></span
+            ><span class="body"
+              ><span class="tag m3">M3</span> 再打卡一个也含 D3 的补剂 →
+              合计正确累加（跨补剂归并），来源列两个补剂</span
+            >
+          </div>
+          <div class="chk m3row">
+            <span class="n"></span
+            ><span class="body"
+              ><span class="tag m3">M3</span> mg 与 μg 混用 → 归一到 μg 后合计正确；<b
+                >IU 与 ml 不出现在同一行</b
+              ></span
+            >
+          </div>
+          <div class="chk m3row">
+            <span class="n"></span
+            ><span class="body"
+              ><span class="tag m3">M3</span> 改一次配方（含量翻倍）→
+              旧关联失效日＝昨日、新关联今日生效；<b>回看昨天的汇总仍按旧配方算</b></span
+            >
+          </div>
+          <div class="chk m3row">
+            <span class="n"></span
+            ><span class="body"
+              ><span class="tag m3">M3</span> 对含 D3 的补剂标记「漏服」→
+              该条<b>不计入</b>成分汇总</span
+            >
+          </div>
+        </div>
+      </section>
+
+      <!-- ⑩ 明确不做 -->
+      <section id="dont">
+        <div class="sec-head">
+          <span class="sec-num">10</span>
+          <h2>边界与红线</h2>
+          <span class="sub">写在最前面，用于挡住范围蔓延</span>
+        </div>
+
+        <div class="dont">
+          <div class="item">
+            <div class="t">不做医疗建议与健康结论</div>
+            <div class="d">
+              阈值全部用户自填，系统不预置默认值。成分汇总只累加与并列，不出现「过量」「建议减少」等结论性措辞。
+            </div>
+          </div>
+          <div class="item">
+            <div class="t">不做静默隐藏</div>
+            <div class="d">
+              节奏 /
+              停药参数缺失或非法时，一律判为「该吃」，把补剂留在首页让用户看见，同时在管理页标注「配置异常，请修正」。
+            </div>
+          </div>
+          <div class="item">
+            <div class="t">M3 项不得提前进入 M1</div>
+            <div class="d">成分库、提醒、统计都在 M3。范围蔓延是本项目最大的需求风险。</div>
+          </div>
+          <div class="item">
+            <div class="t">不做移动端专门适配</div>
+            <div class="d">
+              D5 定为 PC 优先。窄屏只需「不破坏」；触摸手势、底部导航、44px
+              热区、安全区适配将来确有需要时单独立项。
+            </div>
+          </div>
+          <div class="item">
+            <div class="t">误删不可恢复</div>
+            <div class="d">
+              D2 砍掉回收站后的已知代价。缓解：删除二次确认 + 确认框内提示「建议先导出备份」+ M3
+              补备份提醒。
+            </div>
+          </div>
+          <div class="item">
+            <div class="t">不做云同步与后端</div>
+            <div class="d">
+              纯前端、本地存储、离线可用。方案组定时自动执行因与纯前端定位冲突，亦不做。
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <footer>
+        <p>补剂记录工具 · 需求卡片 v12.2（决策收口版）· 2026-09-20</p>
+        <p>
+          本卡片由 <b>v12.0-需求重梳理.md</b> 同步而来，两者内容一致时以 markdown
+          文档为准（卡片用于直观浏览与对齐）。
+        </p>
+        <p>
+          本方案为产品设计参考，具体实施请结合公司合规与法务要求确认。产品定性为记录工具：所有阈值由用户自行设定，系统仅做记录与提示，不构成任何医学建议。
+        </p>
+      </footer>
+    </div>
+  </body>
+</html>
