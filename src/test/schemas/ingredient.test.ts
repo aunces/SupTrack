@@ -1,14 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import { IngredientCreateSchema } from '@/schemas/ingredient'
 
+const now = new Date().toISOString()
+
 const base = {
-  id: 'ing-1',
-  name: '维生素 D',
+  id: crypto.randomUUID(),
+  name: '维生素 D3',
   unit: 'mcg',
   recommendedDailyIntake: 20,
   upperLimit: 100,
-  description: null,
-  deletedAt: 0,
+  notes: null,
+  createdAt: now,
+  updatedAt: now,
 }
 
 describe('IngredientCreateSchema', () => {
@@ -34,10 +37,31 @@ describe('IngredientCreateSchema', () => {
     expect(IngredientCreateSchema.safeParse({ ...base, unit: 'kg' }).success).toBe(false)
   })
 
-  it('推荐量与上限必须是整数', () => {
+  it('参考摄入量与上限留空合法（系统不预置默认阈值）', () => {
+    expect(
+      IngredientCreateSchema.safeParse({
+        ...base,
+        recommendedDailyIntake: null,
+        upperLimit: null,
+      }).success,
+    ).toBe(true)
+  })
+
+  it('参考摄入量与上限必须是整数且非负', () => {
     expect(IngredientCreateSchema.safeParse({ ...base, recommendedDailyIntake: 0.5 }).success).toBe(
       false,
     )
     expect(IngredientCreateSchema.safeParse({ ...base, upperLimit: 1.5 }).success).toBe(false)
+    expect(IngredientCreateSchema.safeParse({ ...base, recommendedDailyIntake: -1 }).success).toBe(
+      false,
+    )
+    expect(IngredientCreateSchema.safeParse({ ...base, upperLimit: -1 }).success).toBe(false)
+    expect(IngredientCreateSchema.safeParse({ ...base, recommendedDailyIntake: 0 }).success).toBe(
+      true,
+    )
+  })
+
+  it('名称为空被拒', () => {
+    expect(IngredientCreateSchema.safeParse({ ...base, name: '' }).success).toBe(false)
   })
 })

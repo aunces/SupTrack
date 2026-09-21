@@ -1,103 +1,76 @@
 import { z } from 'zod'
 import {
-  INTAKE_SOURCE_VALUES,
-  INTAKE_STATUS_VALUES,
-  PLANNED_AMOUNT_SOURCE_VALUES,
+  INTAKE_ORIGIN,
+  INTAKE_ORIGIN_VALUES,
   TIME_SLOT_VALUES,
+  type IntakeOrigin,
 } from '@/constants/enums'
-import { STOCK_STATE_VALUES } from '@/constants/stockState'
 import {
-  DeletedAtSchema,
   IntSchema,
   IsoDateSchema,
   IsoDateTimeSchema,
-  NullableIntSchema,
   NullableTextSchema,
   UuidSchema,
 } from './common'
 
 /**
- * 新建 DailyIntake。
- * 注意：不含任何补录窗口的日期范围语义，范围校验全部下放 Service 层 validateIntakeDate(date, mode)。
+ * 记录（实施指导书 §5.2 / §5.5）。
+ * 已删除 status / source / actualAmount / plannedAmount* / stockState / deletedAt：
+ * 四态枚举收成「taken 布尔 + origin 枚举」，来源可溯源（R-16 / DIFF-01）。
  */
+
+const BaseShape = {
+  /** 服用归属日期（补录时为用户所选历史日期） */
+  date: IsoDateSchema,
+  supplementId: z.string().min(1),
+  /** 空 = 无计划（手动录入 / 计划外服用） */
+  planId: NullableTextSchema,
+  timeSlot: z.enum(TIME_SLOT_VALUES),
+  /** 实际服用量，整数 */
+  amount: IntSchema.min(1, '服用量至少为 1'),
+  taken: z.boolean(),
+  isExtra: z.boolean(),
+  origin: z.enum(INTAKE_ORIGIN_VALUES),
+  notes: NullableTextSchema,
+}
+
+/** R-16 一致性：isExtra 由 origin 派生，两者不得各说各话（DIFF-01） */
+function checkIsExtra(data: { isExtra?: boolean; origin?: IntakeOrigin }): boolean {
+  if (data.isExtra === undefined || data.origin === undefined) return true
+  return data.isExtra === (data.origin !== INTAKE_ORIGIN.CHECKIN)
+}
+
+/** 需求 §4.6：今天不能标漏服 —— taken=false 只允许出现在补录与手动录入里 */
+function checkSkipped(data: { taken?: boolean; origin?: IntakeOrigin }): boolean {
+  if (data.taken !== false || data.origin === undefined) return true
+  return data.origin === INTAKE_ORIGIN.BACKFILL || data.origin === INTAKE_ORIGIN.MANUAL
+}
+
 export const DailyIntakeCreateSchema = z
   .object({
     id: UuidSchema,
-    date: IsoDateSchema,
-    supplementId: z.string().min(1),
-    planId: NullableTextSchema,
-    /** @deprecated P2 清理 */
-    plannedAmount: NullableIntSchema,
-    plannedAmountSnapshot: NullableIntSchema,
-    plannedAmountSource: z.enum(PLANNED_AMOUNT_SOURCE_VALUES),
-    actualAmount: IntSchema,
-    timeSlot: z.enum(TIME_SLOT_VALUES),
-    status: z.enum(INTAKE_STATUS_VALUES),
-    source: z.enum(INTAKE_SOURCE_VALUES),
-    notes: NullableTextSchema,
-    stockState: z.enum(STOCK_STATE_VALUES),
-    deletedAt: DeletedAtSchema,
+    ...BaseShape,
     createdAt: IsoDateTimeSchema,
     updatedAt: IsoDateTimeSchema,
   })
-  .refine((d) => !(d.source === 'plan' && d.status === 'extra'), '计划来源不允许 extra 状态')
-  .refine((d) => {
-    // 四态与 deletedAt 一致性
-    if (d.deletedAt === 0) {
-      return d.stockState === 'deducted' || d.stockState === 'not_deducted'
-    }
-    return (
-      d.stockState === 'not_deducted' ||
-      d.stockState === 'was_deducted' ||
-      d.stockState === 'unknown'
-    )
-  }, 'stockState 与 deletedAt 不一致')
-  .refine(
-    (d) =>
-      !(d.status === 'skipped' && (d.stockState === 'deducted' || d.stockState === 'was_deducted')),
-    'skipped 状态不能标记为已扣库存',
-  )
+  .refine(checkIsExtra, { message: 'isExtra 必须与 origin 保持一致' })
+  .refine(checkSkipped, { message: '只有补录或手动录入的记录才能标记漏服' })
 
-/** 更新 DailyIntake（历史修正用）。refine 仅在相关字段存在时校验，避免部分更新误报 */
 export const DailyIntakeUpdateSchema = z
   .object({
     date: IsoDateSchema.optional(),
     supplementId: z.string().min(1).optional(),
     planId: NullableTextSchema.optional(),
-    plannedAmount: NullableIntSchema.optional(),
-    plannedAmountSnapshot: NullableIntSchema.optional(),
-    plannedAmountSource: z.enum(PLANNED_AMOUNT_SOURCE_VALUES).optional(),
-    actualAmount: IntSchema.optional(),
     timeSlot: z.enum(TIME_SLOT_VALUES).optional(),
-    status: z.enum(INTAKE_STATUS_VALUES).optional(),
-    source: z.enum(INTAKE_SOURCE_VALUES).optional(),
+    amount: IntSchema.min(1).optional(),
+    taken: z.boolean().optional(),
+    isExtra: z.boolean().optional(),
+    origin: z.enum(INTAKE_ORIGIN_VALUES).optional(),
     notes: NullableTextSchema.optional(),
-    stockState: z.enum(STOCK_STATE_VALUES).optional(),
-    deletedAt: DeletedAtSchema.optional(),
     updatedAt: IsoDateTimeSchema.optional(),
   })
-  .refine((d) => !(d.source === 'plan' && d.status === 'extra'), '计划来源不允许 extra 状态')
-  .refine((d) => {
-    if (d.stockState === undefined || d.deletedAt === undefined) return true
-    if (d.deletedAt === 0) {
-      return d.stockState === 'deducted' || d.stockState === 'not_deducted'
-    }
-    return (
-      d.stockState === 'not_deducted' ||
-      d.stockState === 'was_deducted' ||
-      d.stockState === 'unknown'
-    )
-  }, 'stockState 与 deletedAt 不一致')
-  .refine((d) => {
-    if (d.status === undefined || d.stockState === undefined) return true
-    if (
-      d.status === 'skipped' &&
-      (d.stockState === 'deducted' || d.stockState === 'was_deducted')
-    ) {
-      return false
-    }
-    return true
-  }, 'skipped 状态不能标记为已扣库存')
+  .refine(checkIsExtra, { message: 'isExtra 必须与 origin 保持一致' })
+  .refine(checkSkipped, { message: '只有补录或手动录入的记录才能标记漏服' })
 
 export type DailyIntakeCreateInput = z.infer<typeof DailyIntakeCreateSchema>
 export type DailyIntakeUpdateInput = z.infer<typeof DailyIntakeUpdateSchema>

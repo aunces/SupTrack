@@ -1,3 +1,12 @@
+/**
+ * 枚举与阈值常量（实施指导书 §5.4）。
+ *
+ * 本文件只放「值域」与「写死不配置的阈值」，不放任何业务判断。
+ * 已按新模型删除：INTAKE_STATUS / INTAKE_SOURCE / CYCLE_MODE / SUPPLEMENT_STATUS /
+ * STOCK_LOG_REASON / PLANNED_AMOUNT_SOURCE / STOCK_BATCH_UNIT（R-04 / R-05 / v12.2 §5.6）。
+ */
+
+// ── 时段 ─────────────────────────────────────────────────────
 export const TIME_SLOT = {
   MORNING: 'morning',
   NOON: 'noon',
@@ -7,143 +16,68 @@ export const TIME_SLOT = {
 
 export type TimeSlot = (typeof TIME_SLOT)[keyof typeof TIME_SLOT]
 
+export const TIME_SLOT_VALUES = Object.values(TIME_SLOT) as [TimeSlot, ...TimeSlot[]]
+
 export const TIME_SLOT_LABEL: Record<TimeSlot, string> = {
-  morning: '早',
-  noon: '中',
-  evening: '晚',
+  morning: '早上',
+  noon: '中午',
+  evening: '晚上',
   bedtime: '睡前',
 }
 
-export const TIME_SLOT_VALUES = Object.values(TIME_SLOT) as [TimeSlot, ...TimeSlot[]]
-
-export const INTAKE_STATUS = {
-  TAKEN: 'taken',
-  SKIPPED: 'skipped',
-  EXTRA: 'extra',
-  PARTIAL: 'partial',
-} as const
-
-export type IntakeStatus = (typeof INTAKE_STATUS)[keyof typeof INTAKE_STATUS]
-
-export const INTAKE_STATUS_LABEL: Record<IntakeStatus, string> = {
-  taken: '已服用',
-  skipped: '漏服',
-  extra: '多服',
-  partial: '部分服用',
-}
-
-export const INTAKE_STATUS_VALUES = Object.values(INTAKE_STATUS) as [
-  IntakeStatus,
-  ...IntakeStatus[],
-]
-
-export const INTAKE_SOURCE = {
-  PLAN: 'plan',
-  MANUAL: 'manual',
-} as const
-
-export type IntakeSource = (typeof INTAKE_SOURCE)[keyof typeof INTAKE_SOURCE]
-
-export const INTAKE_SOURCE_VALUES = Object.values(INTAKE_SOURCE) as [
-  IntakeSource,
-  ...IntakeSource[],
-]
-
-export const CYCLE_MODE = {
-  NONE: 'none',
-  ONE_TIME: 'oneTime',
+// ── 节奏模式 ─────────────────────────────────────────────────
+export const RATE_MODE = {
+  DAILY: 'daily',
   CYCLIC: 'cyclic',
 } as const
 
-export type CycleMode = (typeof CYCLE_MODE)[keyof typeof CYCLE_MODE]
+export type RateMode = (typeof RATE_MODE)[keyof typeof RATE_MODE]
 
-export const CYCLE_MODE_LABEL: Record<CycleMode, string> = {
-  none: '不循环',
-  oneTime: '一次性',
-  cyclic: '周期性',
-}
+export const RATE_MODE_VALUES = Object.values(RATE_MODE) as [RateMode, ...RateMode[]]
 
-export const CYCLE_MODE_VALUES = Object.values(CYCLE_MODE) as [CycleMode, ...CycleMode[]]
-
-export const SUPPLEMENT_STATUS = {
-  ACTIVE: 'active',
-  INACTIVE: 'inactive',
-  FINISHED: 'finished',
+// ── 记录来源（R-16：每条记录必须可溯源） ───────────────────────
+export const INTAKE_ORIGIN = {
+  /** 计划内打卡 */
+  CHECKIN: 'checkin',
+  /** 追加一次（同一天吃了第二次） */
+  EXTRA: 'extra',
+  /** 仍要服用（休息日 / 停用期） */
+  FORCED: 'forced',
+  /** 补录 */
+  BACKFILL: 'backfill',
+  /** 手动录入（无计划） */
+  MANUAL: 'manual',
 } as const
 
-export type SupplementStatus = (typeof SUPPLEMENT_STATUS)[keyof typeof SUPPLEMENT_STATUS]
+export type IntakeOrigin = (typeof INTAKE_ORIGIN)[keyof typeof INTAKE_ORIGIN]
 
-export const SUPPLEMENT_STATUS_LABEL: Record<SupplementStatus, string> = {
-  active: '使用中',
-  inactive: '已停用',
-  finished: '已用完',
-}
-
-export const SUPPLEMENT_STATUS_VALUES = Object.values(SUPPLEMENT_STATUS) as [
-  SupplementStatus,
-  ...SupplementStatus[],
+export const INTAKE_ORIGIN_VALUES = Object.values(INTAKE_ORIGIN) as [
+  IntakeOrigin,
+  ...IntakeOrigin[],
 ]
 
-export const STOCK_LOG_REASON = {
-  INTAKE: 'intake',
-  MANUAL_INTAKE: 'manual_intake',
-  UNDO_INTAKE: 'undo_intake',
-  RESTOCK: 'restock',
-  ADJUST: 'adjust',
-  PURGE_ROLLBACK: 'purge_rollback',
-} as const
-
-export type StockLogReason = (typeof STOCK_LOG_REASON)[keyof typeof STOCK_LOG_REASON]
-
-export const STOCK_LOG_REASON_LABEL: Record<StockLogReason, string> = {
-  intake: '服用扣减',
-  manual_intake: '手动录入扣减',
-  undo_intake: '撤销回滚',
-  restock: '补货入库',
-  adjust: '库存调整',
-  purge_rollback: '历史版本回滚（已废弃）',
+export const INTAKE_ORIGIN_LABEL: Record<IntakeOrigin, string> = {
+  checkin: '计划打卡',
+  extra: '追加一次',
+  forced: '计划外服用',
+  backfill: '补录',
+  manual: '手动录入',
 }
 
-export const STOCK_LOG_REASON_VALUES = Object.values(STOCK_LOG_REASON) as [
-  StockLogReason,
-  ...StockLogReason[],
-]
+// ── 全部补剂（全局停药） ───────────────────────────────────────
+/** PausePeriod.supplementId 取此值表示「全部补剂」，不单独做全局开关 */
+export const ALL_SUPPLEMENTS = 'ALL'
 
-export const PLANNED_AMOUNT_SOURCE = {
-  PLAN_SNAPSHOT: 'plan_snapshot',
-  CURRENT_PLAN: 'current_plan',
-  UNAVAILABLE: 'unavailable',
-} as const
-
-export type PlannedAmountSource = (typeof PLANNED_AMOUNT_SOURCE)[keyof typeof PLANNED_AMOUNT_SOURCE]
-
-export const PLANNED_AMOUNT_SOURCE_VALUES = Object.values(PLANNED_AMOUNT_SOURCE) as [
-  PlannedAmountSource,
-  ...PlannedAmountSource[],
-]
-
-export const STOCK_BATCH_UNIT = {
-  USAGE: 'usage',
-  STOCK: 'stock',
-} as const
-
-export type StockBatchUnit = (typeof STOCK_BATCH_UNIT)[keyof typeof STOCK_BATCH_UNIT]
-
-export const META_KEY = {
-  SCHEMA_VERSION: 'schemaVersion',
-  LAST_EXPORT_AT: 'lastExportAt',
-  APP_VERSION: 'appVersion',
-  BACKFILL_WINDOW_DAYS: 'backfillWindowDays',
-} as const
-
-export type MetaKey = (typeof META_KEY)[keyof typeof META_KEY]
-
-export const DEFAULT_BACKFILL_WINDOW_DAYS = 30
+// ── 阈值（全部写死，不做成设置项） ─────────────────────────────
+/** 补录窗口（天），不含今天。固定值，不可配置（D-07） */
+export const BACKFILL_WINDOW_DAYS = 7
+/** 余量偏低：剩余可用天数 ≤ 该值（按日均消耗算，见 utils/rate.ts::rateDensity） */
+export const LOW_STOCK_DAYS = 5
 /** 临期提醒阈值（天） */
-export const DEFAULT_EXPIRY_WARNING_DAYS = 30
-/** 库存不足阈值：剩余用量不足该天数 */
-export const DEFAULT_LOW_STOCK_DAYS = 7
-/** 次日提醒检测范围固定 7 天 */
-export const MISSED_PLAN_DETECT_DAYS = 7
-/** 次日提醒缓存时长 5 分钟 */
-export const MISSED_PLAN_CACHE_MS = 5 * 60 * 1000
+export const EXPIRY_WARNING_DAYS = 30
+/** 备份提醒：距上次导出超过该天数（M3） */
+export const BACKUP_REMIND_DAYS = 30
+/** 密集折叠阈值：同时段「休息 + 停用」项 ≥ 该值时折叠（W-01） */
+export const DENSE_COLLAPSE_THRESHOLD = 3
+/** 月历每格最多标记数，超出显示 +N（W-05） */
+export const CALENDAR_MAX_DOTS = 3

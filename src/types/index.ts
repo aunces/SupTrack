@@ -1,191 +1,149 @@
-import type {
-  CycleMode,
-  IntakeSource,
-  IntakeStatus,
-  PlannedAmountSource,
-  StockLogReason,
-  SupplementStatus,
-  TimeSlot,
-} from '@/constants/enums'
+/**
+ * 领域模型（实施指导书 §5.2）。
+ *
+ * 字段名与 v12.2 需求 §6 逐字一致，除 §5.7 记录的实现化偏离外不得改动。
+ * 已按新模型删除：DeletedAt / StockState / StockBatch / StockLog / BodyFeedback /
+ * BackfillItem / BackfillResult / MissedPlan（R-04 / R-05 / v12.2 §5.6）。
+ *
+ * 设计要点：能用一个数字表达的，不建一张表；能用布尔表达的，不建枚举。
+ */
+
 import type { IngredientUnit, UnitType } from '@/constants/units'
-import type { DeletedAt } from '@/constants/deletedAt'
-import type { StockState } from '@/constants/stockState'
-import type { StockBatchUnit } from '@/constants/enums'
+import type { IntakeOrigin, RateMode, TimeSlot } from '@/constants/enums'
 
-export type { DeletedAt, StockState, PlannedAmountSource }
-export type {
-  UnitType,
-  IngredientUnit,
-  TimeSlot,
-  IntakeStatus,
-  IntakeSource,
-  CycleMode,
-  SupplementStatus,
-  StockLogReason,
-  StockBatchUnit,
-}
+export type { IngredientUnit, IntakeOrigin, RateMode, TimeSlot, UnitType }
 
+// ── 1. 补剂 ──────────────────────────────────────────────────
 export interface Supplement {
   id: string
   name: string
-  brand?: string | null
-  description?: string | null
+  /** 每次吃的单位：capsule / tablet / pill / ... 共 10 种 */
   unitType: UnitType
-  /** 当前库存（按服用单位计，整数，可为负）。null 表示不记录库存 */
-  stockCountInUsageUnit?: number | null
-  stockUnit?: string | null
-  unitsPerStock?: number | null
-  productionDate?: string | null
-  expiryDate?: string | null
-  status: SupplementStatus
-  deletedAt: DeletedAt
+  /** 余量（按服用单位计，整数，可为负）。null = 不记录 */
+  stockCount: number | null
+  /** 展示单位（瓶 / 盒），仅 UI 换算 */
+  stockUnit: string | null
+  /** 换算率：1 瓶 = 60 粒 */
+  unitsPerStock: number | null
+  /** yyyy-MM-dd */
+  expiryDate: string | null
+  notes: string | null
+  /** ISO */
   createdAt: string
   updatedAt: string
 }
 
-export interface Ingredient {
+// ── 2. 计划（含节奏） ─────────────────────────────────────────
+export interface DosagePlan {
   id: string
-  name: string
-  unit: IngredientUnit
-  recommendedDailyIntake?: number | null
-  upperLimit?: number | null
-  description?: string | null
-  deletedAt: DeletedAt
+  supplementId: string
+  /** 每次服用量（不是每日量） */
+  amountPerTime: number
+  /** 非空、去重 */
+  timeSlots: TimeSlot[]
+  rateMode: RateMode
+  /** cyclic 必填，≥1 */
+  rateOnDays: number | null
+  /** cyclic 必填，≥1 */
+  rateOffDays: number | null
+  /** cyclic 必填，节奏起点。起点之前该补剂不出现，不报错 */
+  rateAnchorDate: string | null
+  /** 启用 / 关闭（P6：计划关闭 ≠ 节奏休息） */
+  isActive: boolean
+  notes: string | null
+  createdAt: string
+  updatedAt: string
 }
 
+// ── 3. 记录 ──────────────────────────────────────────────────
+export interface DailyIntake {
+  id: string
+  /** 服用归属日期（补录时为用户所选历史日期）。yyyy-MM-dd */
+  date: string
+  supplementId: string
+  /** 空 = 无计划（手动录入 / 计划外服用） */
+  planId: string | null
+  timeSlot: TimeSlot
+  /** 实际服用量，整数 */
+  amount: number
+  /** true 吃了 / false 标记漏服 */
+  taken: boolean
+  /** = origin !== 'checkin'（由 Zod refine 强制，DIFF-01） */
+  isExtra: boolean
+  /** 来源，UI 据此标注（R-16） */
+  origin: IntakeOrigin
+  notes: string | null
+  /** 真实写入时间（与 date 不同日时 UI 标「补录」） */
+  createdAt: string
+  updatedAt: string
+}
+
+// ── 4. 停药条目 ───────────────────────────────────────────────
+export interface PausePeriod {
+  id: string
+  /** 空 = 临时停药 */
+  schemeId: string | null
+  /** 目标补剂，或 'ALL' 表示全部 */
+  supplementId: string | 'ALL'
+  /** 空 = 跟随方案组（仅在 schemeId 非空时合法） */
+  startDate: string | null
+  /** 空 = 持续中 */
+  endDate: string | null
+  /** 原因，UI 展示在今日页 */
+  reason: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+// ── 5. 停药方案组 ─────────────────────────────────────────────
+export interface PauseScheme {
+  id: string
+  /** 如「抗生素期间」 */
+  name: string
+  note: string | null
+  /** 是否执行中（同一时刻至多一组） */
+  isActive: boolean
+  /** 执行起始日 */
+  activatedAt: string | null
+  /** 结束日；空且 isActive = 持续中 */
+  endedAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+// ── 6. 成分（M3） ─────────────────────────────────────────────
+export interface Ingredient {
+  id: string
+  /** 跨补剂归并的唯一锚点 */
+  name: string
+  /** mg / μg / g / IU / ml；重量类存储统一 μg */
+  unit: IngredientUnit
+  /** 参考摄入量，用户自填，系统不预置任何默认阈值 */
+  recommendedDailyIntake: number | null
+  /** 上限，用户自填 */
+  upperLimit: number | null
+  notes: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+// ── 7. 补剂-成分关联（M3） ────────────────────────────────────
 export interface SupplementIngredient {
   id: string
   supplementId: string
   ingredientId: string
+  /** 每份含量，整数 */
   amountPerServing: number
+  /** 生效日 */
   effectiveFrom: string
-  effectiveTo?: string | null
-  deletedAt: DeletedAt
+  /** 失效日，空 = 当前有效 */
+  effectiveTo: string | null
   createdAt: string
   updatedAt: string
 }
 
-export interface DosagePlan {
-  id: string
-  supplementId: string
-  dailyAmount: number
-  timeSlots: TimeSlot[]
-  withMeal: boolean
-  isActive: boolean
-  notes?: string | null
-  deletedAt: DeletedAt
-  createdAt: string
-  updatedAt: string
-}
-
-export interface DailyIntake {
-  id: string
-  date: string
-  supplementId: string
-  planId?: string | null
-  /** @deprecated 计划量快照，v10 起新记录不再写入，P2 清理 */
-  plannedAmount?: number | null
-  plannedAmountSnapshot?: number | null
-  plannedAmountSource: PlannedAmountSource
-  actualAmount: number
-  timeSlot: TimeSlot
-  status: IntakeStatus
-  source: IntakeSource
-  notes?: string | null
-  stockState: StockState
-  deletedAt: DeletedAt
-  createdAt: string
-  updatedAt: string
-}
-
-export interface PausePeriod {
-  id: string
-  supplementId?: string | null
-  startDate: string
-  endDate?: string | null
-  reason?: string | null
-  cycleMode: CycleMode
-  cycleStartDate?: string | null
-  cycleOnDays?: number | null
-  cycleOffDays?: number | null
-  deletedAt: DeletedAt
-  createdAt: string
-  updatedAt: string
-}
-
-export interface BodyFeedback {
-  id: string
-  date: string
-  energy: number
-  sleep: number
-  digestion: number
-  mood: number
-  notes?: string | null
-  deletedAt: DeletedAt
-  createdAt: string
-  updatedAt: string
-}
-
-export interface StockBatch {
-  id: string
-  supplementId: string
-  quantity: number
-  unit: StockBatchUnit
-  conversionRate?: number | null
-  expiryDate?: string | null
-  productionDate?: string | null
-  isDepleted: boolean
-  deletedAt: DeletedAt
-  createdAt: string
-  updatedAt: string
-}
-
-export interface StockLog {
-  id: string
-  supplementId: string
-  deltaInUsageUnit: number
-  reason: StockLogReason
-  relatedIntakeId?: string | null
-  note?: string | null
-  deletedAt: DeletedAt
-  createdAt: string
-}
-
+// ── 8. 元数据 ────────────────────────────────────────────────
 export interface MetaRecord {
   key: string
   value: unknown
-}
-
-/** 补录弹窗中的一项 */
-export interface BackfillItem {
-  supplementId: string
-  timeSlot: TimeSlot
-  /** 已服用 / 部分服用 / 漏服 */
-  choice: 'taken' | 'partial' | 'skipped'
-  /** 不传时取计划量，无计划取 1 */
-  actualAmount?: number
-}
-
-export interface BackfillSkippedItem {
-  supplementId: string
-  name: string
-  timeSlot?: TimeSlot
-}
-
-export interface BackfillResult {
-  created: number
-  /** 该时段已有未删除记录 */
-  skippedExisting: BackfillSkippedItem[]
-  /** 临期补剂 */
-  skippedExpiring: BackfillSkippedItem[]
-  /** 扣减后库存为负的补剂 */
-  negativeStock: Array<{ supplementId: string; name: string; stock: number }>
-}
-
-/** 次日提醒：计划内未记录项 */
-export interface MissedPlan {
-  date: string
-  supplementId: string
-  timeSlot: TimeSlot
-  plan: DosagePlan
 }
