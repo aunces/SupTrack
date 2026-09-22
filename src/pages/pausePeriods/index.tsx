@@ -15,6 +15,12 @@ import {
 } from '@/services/pauseService'
 import { toast } from '@/stores/toastStore'
 import { formatShortDate, today } from '@/utils/date'
+import {
+  cyclicProgress,
+  describeSchemeCycle,
+  nextCyclicOffDay,
+  nextCyclicOnDay,
+} from '@/utils/pause'
 import type { PausePeriod } from '@/types'
 
 /**
@@ -57,16 +63,38 @@ function describeRange(period: PausePeriod): string {
   return `${start} → ${formatShortDate(period.endDate)}`
 }
 
-/** 「覆盖 3 项 · 9/18 起 · 未设结束日」 */
-function describeScheme(row: PauseSchemeRow): string {
-  const parts = [`覆盖 ${row.entryCount} 项`]
-  if (row.scheme.isActive) {
-    if (row.scheme.activatedAt) parts.push(`${formatShortDate(row.scheme.activatedAt)} 起`)
-    parts.push(row.scheme.endedAt ? '已停止' : '未设结束日')
-  } else if (row.scheme.endedAt) {
-    parts.push('已停止')
+/**
+ * 方案组行内的说明。
+ *
+ * 连续方案：「覆盖 3 项 · 连续 · 9/18 起 · 未设结束日」
+ * 周期方案：「覆盖 3 项 · 吃 21 停 7 · 第 22/28 天 · 停用中 · 9/29 恢复」
+ *
+ * 周期方案刻意**不**显示「执行日」和「未设结束日」——用户真正关心的是「现在第几天、
+ * 下一次停/吃是什么时候」，而周期是无限的，说「未设结束日」只是噪音。
+ */
+function describeScheme(row: PauseSchemeRow, now: string): string {
+  const { scheme } = row
+  const parts = [`覆盖 ${row.entryCount} 项`, describeSchemeCycle(scheme) ?? '连续']
+
+  if (!scheme.isActive) {
+    parts.push(scheme.endedAt ? '已停止' : '未执行')
+    return parts.join(' · ')
+  }
+
+  const progress = cyclicProgress(scheme, now)
+  if (!progress) {
+    if (scheme.activatedAt) parts.push(`${formatShortDate(scheme.activatedAt)} 起`)
+    parts.push(scheme.endedAt ? '已停止' : '未设结束日')
+    return parts.join(' · ')
+  }
+
+  parts.push(`第 ${progress.day}/${progress.total} 天`)
+  if (progress.offDay) {
+    const resume = nextCyclicOnDay(scheme, now)
+    parts.push(resume ? `停用中 · ${formatShortDate(resume)} 恢复` : '停用中')
   } else {
-    parts.push('未执行')
+    const nextOff = nextCyclicOffDay(scheme, now)
+    parts.push(nextOff ? `${formatShortDate(nextOff)} 起停` : '服用中')
   }
   return parts.join(' · ')
 }
@@ -116,12 +144,16 @@ export function PausePeriodsPage() {
   }
 
   async function runActivate(row: PauseSchemeRow) {
+    const cycleLabel = describeSchemeCycle(row.scheme)
     try {
       const { endedScheme } = await activateScheme(row.scheme.id, today())
+      // 周期方案在执行时必须说清「今天就是第 1 天」——用户会去找一个「周期起点」输入框
       toast(
         endedScheme
           ? `已执行「${row.scheme.name}」，并结束了「${endedScheme.name}」`
-          : `已执行「${row.scheme.name}」`,
+          : cycleLabel
+            ? `已执行「${row.scheme.name}」，今天算第 1 天（${cycleLabel}）`
+            : `已执行「${row.scheme.name}」`,
       )
     } catch (error) {
       toast((error as Error).message, { variant: 'destructive' })
@@ -174,7 +206,7 @@ export function PausePeriodsPage() {
                       {row.scheme.isActive ? <Badge variant="secondary">执行中</Badge> : null}
                     </p>
                     <p className="text-muted-foreground text-xs tabular-nums">
-                      {describeScheme(row)}
+                      {describeScheme(row, today())}
                       {row.scheme.note ? ` · ${row.scheme.note}` : ''}
                     </p>
                   </div>

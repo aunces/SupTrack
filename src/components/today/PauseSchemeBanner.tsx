@@ -4,13 +4,17 @@ import { stopScheme } from '@/services/pauseService'
 import { toast } from '@/stores/toastStore'
 import type { PauseScheme } from '@/types'
 import { today } from '@/utils/date'
+import { describeSchemeCycle } from '@/utils/pause'
 
 /**
  * 今日页的停药提醒条（设计稿首页 ② / §8.3）。
  *
- * 只在**存在执行中的方案组**时渲染 —— 临时停药不出现，因为它本来就会在
- * 对应的补剂卡片上显示「停用中」，顶部再提醒一次是噪音。
+ * 只在**存在执行中的方案组、且它今天真的停了东西**时渲染 —— 临时停药不出现，
+ * 因为它本来就会在对应的补剂卡片上显示「停用中」，顶部再提醒一次是噪音。
  * 方案组不一样：它一次覆盖多项，用户需要知道「为什么今天少了一半」。
+ *
+ * ★ 周期方案（D-44）只在**停用段**出现：它的「吃」段什么也没停，
+ *   提醒条出现只会让用户以为今天不该吃。这个过滤在 useTodayData 里做。
  *
  * 样式：浅蓝底 #F8FAFC + 圆角 8 + 左侧 3px 紫色竖条；
  * 文案单行（起止细节在停药页，这里只说「是什么、几项、能停」）。
@@ -26,6 +30,8 @@ interface PauseSchemeBannerProps {
 
 export function PauseSchemeBanner({ scheme, entryCount }: PauseSchemeBannerProps) {
   const [stopping, setStopping] = useState(false)
+  // 周期方案补一句「吃 21 停 7」，否则用户不知道这次停用是几天、后面还会不会再有
+  const cycleLabel = describeSchemeCycle(scheme)
 
   async function handleStop() {
     setStopping(true)
@@ -44,7 +50,7 @@ export function PauseSchemeBanner({ scheme, entryCount }: PauseSchemeBannerProps
       <span className="w-[3px] shrink-0 bg-[#8B5CF6]" aria-hidden />
       <div className="flex min-w-0 flex-1 items-center justify-between gap-3 px-3.5">
         <p className="truncate text-xs">
-          当前停药方案：{scheme.name}（{entryCount} 项）
+          当前停药方案：{scheme.name}（{entryCount} 项{cycleLabel ? ` · ${cycleLabel}` : ''}）
         </p>
         <Button
           size="sm"

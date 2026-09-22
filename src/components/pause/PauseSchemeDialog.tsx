@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { ALL_SUPPLEMENTS } from '@/constants/enums'
+import { ALL_SUPPLEMENTS, PAUSE_CYCLE_MODE, type PauseCycleMode } from '@/constants/enums'
 import { createScheme, updateScheme } from '@/services/pauseService'
 import { toast } from '@/stores/toastStore'
 import type { PausePeriod, PauseScheme, Supplement } from '@/types'
@@ -81,6 +81,9 @@ export function PauseSchemeDialog({
 }: PauseSchemeDialogProps) {
   const [name, setName] = useState('')
   const [note, setNote] = useState('')
+  const [cycleMode, setCycleMode] = useState<PauseCycleMode>(PAUSE_CYCLE_MODE.CONTINUOUS)
+  const [onDays, setOnDays] = useState('21')
+  const [offDays, setOffDays] = useState('7')
   const [drafts, setDrafts] = useState<EntryDraft[]>([emptyEntry()])
   const [saving, setSaving] = useState(false)
 
@@ -88,6 +91,10 @@ export function PauseSchemeDialog({
     if (!open) return
     setName(scheme?.name ?? '')
     setNote(scheme?.note ?? '')
+    setCycleMode(scheme?.cycleMode ?? PAUSE_CYCLE_MODE.CONTINUOUS)
+    // 默认吃 21 停 7：最常见的疗程间歇，改起来也只是两个数字
+    setOnDays(scheme?.cycleOnDays == null ? '21' : String(scheme.cycleOnDays))
+    setOffDays(scheme?.cycleOffDays == null ? '7' : String(scheme.cycleOffDays))
     setDrafts(
       entries && entries.length > 0
         ? entries.map((entry) => ({
@@ -117,6 +124,15 @@ export function PauseSchemeDialog({
       toast('至少添加一项要停用的补剂', { variant: 'warning' })
       return
     }
+    const cyclic = cycleMode === PAUSE_CYCLE_MODE.CYCLIC
+    if (cyclic) {
+      const on = Number(onDays)
+      const off = Number(offDays)
+      if (!Number.isInteger(on) || on < 1 || !Number.isInteger(off) || off < 1) {
+        toast('周期方案必须填写「吃几天 / 停几天」，且都是不小于 1 的整数', { variant: 'warning' })
+        return
+      }
+    }
     for (const draft of drafts) {
       if (!draft.supplementId) {
         toast('有一项还没选补剂', { variant: 'warning' })
@@ -135,6 +151,10 @@ export function PauseSchemeDialog({
     const payload = {
       name: trimmedName,
       note: note.trim() === '' ? null : note.trim(),
+      // 周期（D-44）：起点复用「执行日」，所以这里只有吃/停天数
+      cycleMode,
+      cycleOnDays: cyclic ? Number(onDays) : null,
+      cycleOffDays: cyclic ? Number(offDays) : null,
       entries: drafts.map((draft) => ({
         supplementId: draft.supplementId,
         // ★ 这一行就是「跟随方案」的全部实现：startDate = null 时，
@@ -163,7 +183,8 @@ export function PauseSchemeDialog({
         <DialogHeader>
           <DialogTitle>{scheme ? '编辑方案组' : '新建方案组'}</DialogTitle>
           <DialogDescription>
-            一套情景可以同时停多种补剂。建好之后，需要时一键执行。
+            一套情景可以同时停多种补剂。建好之后，需要时一键执行。 也可以做成「吃 21 天停 7
+            天」这样的周期疗程。
           </DialogDescription>
         </DialogHeader>
 
@@ -186,6 +207,70 @@ export function PauseSchemeDialog({
               placeholder="帮未来的你想起为什么定这套方案"
               onChange={(event) => setNote(event.target.value)}
             />
+          </div>
+
+          {/* 周期（D-44）：从健康角度的「吃 21 天停 7 天」。
+              与补剂页的「服用节奏」不是同一件事：那边是给药排班（判为「今天不用吃」），
+              这边是疗程间歇（判为「停用中」，带方案名与原因）。 */}
+          <div className="space-y-2">
+            <Label>停药方式 *</Label>
+            <RadioGroup
+              value={cycleMode}
+              onValueChange={(value) => setCycleMode(value as PauseCycleMode)}
+              className="flex gap-6"
+            >
+              <div className="flex items-center gap-2">
+                <RadioGroupItem id="scheme-cycle-continuous" value={PAUSE_CYCLE_MODE.CONTINUOUS} />
+                <Label htmlFor="scheme-cycle-continuous" className="font-normal">
+                  连续
+                </Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <RadioGroupItem
+                  id="scheme-cycle-cyclic"
+                  value={PAUSE_CYCLE_MODE.CYCLIC}
+                  aria-label="周期"
+                />
+                <Label htmlFor="scheme-cycle-cyclic" className="font-normal">
+                  周期（吃 N 停 M）
+                </Label>
+              </div>
+            </RadioGroup>
+
+            {cycleMode === PAUSE_CYCLE_MODE.CONTINUOUS ? (
+              <p className="text-muted-foreground text-xs">执行后一直停用，直到你手动停止。</p>
+            ) : (
+              <>
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  <span>吃</span>
+                  <Input
+                    className="w-20"
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={onDays}
+                    aria-label="吃几天"
+                    onChange={(event) => setOnDays(event.target.value)}
+                  />
+                  <span>天，停</span>
+                  <Input
+                    className="w-20"
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={offDays}
+                    aria-label="停几天"
+                    onChange={(event) => setOffDays(event.target.value)}
+                  />
+                  <span>天</span>
+                </div>
+                {/* 「执行日就是第 1 天」必须写出来：用户会去找一个「周期起点」输入框 */}
+                <p className="text-muted-foreground text-xs">
+                  从「执行」那天算第 1 天开始循环。吃 21 停 7 = 执行后吃 21 天，第 22–28 天停用，第
+                  29 天恢复。
+                </p>
+              </>
+            )}
           </div>
 
           <div className="space-y-2">

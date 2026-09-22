@@ -360,6 +360,13 @@ export function SupplementDialog({
             ) : null}
 
             {errors.rate ? <p className="text-destructive text-xs">{errors.rate}</p> : null}
+
+            {/* 与停药页的分工必须在这里说清，否则用户一定会在两处都配一遍（D-44） */}
+            <p className="text-muted-foreground text-xs">
+              这里是「按规划怎么吃」，今日页显示「今天不用吃」。从健康角度的疗程间歇（如吃 21 天停 7
+              天）请到<strong className="font-medium">停药页</strong>
+              按方案组配置 —— 那里显示「停用中」，可带原因、可一次覆盖多种补剂。
+            </p>
           </div>
 
           {/* §8.5：配方变更写在补剂编辑区内，不单独开页面 */}

@@ -12,6 +12,7 @@ import { useDataVersion } from '@/stores/dataVersion'
 import type { DailyIntake, DosagePlan, PausePeriod, PauseScheme, Supplement } from '@/types'
 import { isExpiringSoon, today } from '@/utils/date'
 import { resolveDayItems, type DayItem } from '@/utils/dayState'
+import { isCyclicScheme, isCyclicSchemeOffDay } from '@/utils/pause'
 import { isLowStock, isNegativeStock } from '@/utils/stock'
 
 /**
@@ -137,7 +138,15 @@ export function useTodayData(date?: string): TodayData {
       lowStock: data.supplements.filter((s) => isLowStock(s, activePlans)),
     }
 
-    const activeScheme = data.schemes.find((scheme) => scheme.isActive) ?? null
+    // 周期方案（D-44）在「吃」段不产出任何停用，提醒条也就不该出现 ——
+    // 它解释不了任何事，反而会让用户以为今天不该吃。周期进度请到停药页看。
+    const activeSchemeRaw = data.schemes.find((scheme) => scheme.isActive) ?? null
+    const activeScheme =
+      activeSchemeRaw &&
+      isCyclicScheme(activeSchemeRaw) &&
+      !isCyclicSchemeOffDay(activeSchemeRaw, dateStr)
+        ? null
+        : activeSchemeRaw
 
     return {
       date: dateStr,
