@@ -11,7 +11,7 @@ import { useCalendarMonth } from '@/hooks/useCalendarMonth'
 import { useTodayData } from '@/hooks/useTodayData'
 import { listBackfillableItems } from '@/services/backfillService'
 import { useDataVersion } from '@/stores/dataVersion'
-import type { CalendarDay, CalendarDot } from '@/utils/calendar'
+import { countMonthStatus, type CalendarDay, type CalendarDot } from '@/utils/calendar'
 import { backfillRange, formatDateLabel, formatShortDate, today } from '@/utils/date'
 import { resolveDayStatus, type DayItem } from '@/utils/dayState'
 import { cn } from 'cn'
@@ -204,6 +204,19 @@ export function CalendarPage() {
   const status = resolveDayStatus(detailItems)
   const pausedItem = detailItems.find((item) => item.state === 'paused')
 
+  // 详情卡统计行（设计 3:318）：已吃 / 今天休息 / 停用
+  const restCount = useMemo(
+    () => detailItems.filter((it) => it.state === 'rest').length,
+    [detailItems],
+  )
+  const pausedCount = useMemo(
+    () => detailItems.filter((it) => it.state === 'paused').length,
+    [detailItems],
+  )
+
+  // 标题统计行：当月「已记 / 漏服」天数
+  const monthStatus = useMemo(() => countMonthStatus(days), [days])
+
   function goToday() {
     const current = new Date()
     setCursor({ year: current.getFullYear(), month: current.getMonth() + 1 })
@@ -212,11 +225,17 @@ export function CalendarPage() {
 
   return (
     <div className="mx-auto w-full max-w-[720px] p-6">
-      <h1 className="mb-4 text-xl font-semibold">日历</h1>
+      <div className="mb-5 flex flex-col gap-1.5">
+        <h1 className="text-xl font-semibold">日历</h1>
+        <p className="text-sm text-[#8E8E8E] tabular-nums">
+          {cursor.year} 年 {cursor.month} 月 · 已记 {monthStatus.taken} 天 · 漏服{' '}
+          {monthStatus.missed} 天
+        </p>
+      </div>
 
-      <div className="flex items-start gap-4">
-        <section className="min-w-0 flex-1">
-          <header className="mb-3 flex items-center justify-between">
+      <div className="flex items-start gap-6">
+        <section className="bg-card min-w-0 flex-1 rounded-xl border">
+          <header className="flex items-center justify-between px-4 pt-3">
             <div className="flex items-center gap-1">
               <Button
                 size="icon"
@@ -243,17 +262,23 @@ export function CalendarPage() {
             </Button>
           </header>
 
+          <div className="bg-border mt-3 h-px" />
+
           {loading ? (
-            <LoadingSkeleton lines={5} />
+            <div className="px-4 pt-3">
+              <LoadingSkeleton lines={5} />
+            </div>
           ) : (
             <>
-              <div className="text-muted-foreground mb-1 grid grid-cols-7 gap-1 text-center text-xs">
+              <div className="text-muted-foreground mt-3 grid grid-cols-7 gap-1 px-4 text-center text-xs">
                 {WEEKDAY_HEADER.map((label) => (
                   <span key={label}>{label}</span>
                 ))}
               </div>
 
-              <div className="grid grid-cols-7 gap-1">
+              <div className="bg-border mt-3 h-px" />
+
+              <div className="grid grid-cols-7 gap-1 px-4 py-3">
                 {days.map((day) => (
                   <DayCell
                     key={day.date}
@@ -264,7 +289,9 @@ export function CalendarPage() {
                 ))}
               </div>
 
-              <ul className="text-muted-foreground mt-3 flex flex-wrap gap-x-3 gap-y-1.5 text-xs">
+              <div className="bg-border h-px" />
+
+              <ul className="text-muted-foreground flex flex-wrap gap-x-3 gap-y-1.5 px-4 py-3 text-xs">
                 {LEGEND.map((entry) => (
                   <li key={entry.label} className="flex items-center gap-1">
                     <span className="flex items-center gap-0.5">{entry.render()}</span>
@@ -276,15 +303,13 @@ export function CalendarPage() {
           )}
         </section>
 
-        {/* 详情常驻：不跳页、不开抽屉 */}
-        <aside className="w-[272px] shrink-0">
+        {/* 详情常驻：不跳页、不开抽屉（设计 3:318 固定 ~300 宽） */}
+        <aside className="w-[300px] shrink-0">
           <div className="bg-card rounded-xl border">
             <header className="border-b px-4 py-2.5">
               <p className="text-sm font-medium">{formatDateLabel(selected)}</p>
-              {/* 与今日页同一套三个数字（§8.1 P4）：第三个不进任何分母 */}
               <p className="text-muted-foreground mt-0.5 text-xs tabular-nums">
-                待吃 {detail.summary.pending} · 已吃 {detail.summary.taken} · 今天不用吃{' '}
-                {detail.summary.off}
+                已吃 {detail.summary.taken} · 今天休息 {restCount} · 停用 {pausedCount}
               </p>
             </header>
 
@@ -313,15 +338,19 @@ export function CalendarPage() {
               />
             </footer>
           </div>
-
-          {/* 当日成分摄入（§8.4 设计稿）。放在日历上不只是「回看数字」——
-              它是「漏服不计入汇总」这条口径唯一能被用户看见的地方（走查第 21 步）。 */}
-          <IngredientSummaryCard
-            date={selected}
-            title="当日成分摄入"
-            emptyHint="这天记录的补剂尚未关联成分"
-          />
         </aside>
+      </div>
+
+      {/* 当日成分摄入（§8.4 设计 3:318）全宽卡：按当天打卡的实际口径累加。
+          批量成分分组由组件内部 groupTotalsBySource 得出，无复合补剂则不渲染。
+          mt-5 = 与上方日历双栏之间留 20px。 */}
+      <div className="mt-5">
+        <IngredientSummaryCard
+          date={selected}
+          title="当日成分摄入"
+          emptyHint="这天记录的补剂尚未关联成分"
+          variant="calendar"
+        />
       </div>
 
       <BackfillDialog open={backfillOpen} onOpenChange={setBackfillOpen} defaultDate={selected} />

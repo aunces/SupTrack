@@ -118,5 +118,34 @@ export function buildCalendarDays(input: CalendarGridInput): CalendarDay[] {
     })
   }
 
-  return days
+  // 不整行显示邻月（2026-09-22）。只保留「含当月日期的行」：
+  // 同一行里混着当月与邻月的补位格保留（如首行的 8/31、末行的 10/01–04），
+  // 但整行都落在下个月（如 10/05–11）的补位整行删掉，避免月历莫名多出一整行。
+  let lastInMonth = -1
+  for (let i = 0; i < days.length; i++) if (days[i].inMonth) lastInMonth = i
+  const keep = Math.min(days.length, Math.ceil((lastInMonth + 1) / 7) * 7)
+
+  return days.slice(0, keep)
+}
+
+/**
+ * 当月「已记 / 漏服」天数（日历页标题统计行，§8.4 设计 3:318）。
+ *
+ * 只统计 `inMonth` 的格；「已记」与「漏服」按 dots 独立计数 ——
+ * 同一天既有 taken 又有 missed（部分完成）会同时计入两者。
+ */
+export interface MonthStatusCount {
+  taken: number
+  missed: number
+}
+
+export function countMonthStatus(days: CalendarDay[]): MonthStatusCount {
+  let taken = 0
+  let missed = 0
+  for (const day of days) {
+    if (!day.inMonth) continue
+    if (day.dots.includes('taken')) taken++
+    if (day.dots.includes('missed')) missed++
+  }
+  return { taken, missed }
 }

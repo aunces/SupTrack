@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { DailyIntake, DosagePlan, PausePeriod, Supplement } from '@/types'
 import {
   buildCalendarDays,
-  CALENDAR_CELLS,
+  countMonthStatus,
   gridStart,
   monthFirstDay,
   monthLastDay,
@@ -129,20 +129,30 @@ function byDate(days: CalendarDay[], date: string): CalendarDay {
 }
 
 describe('月历网格结构', () => {
-  it('固定 42 格（6 行 × 7 列），首格补齐到周一', () => {
+  it('首格补齐到周一；末整行邻月被裁掉（2026-09 → 5 行 35 格）', () => {
     const days = runGrid({ plans: [] })
-    expect(days).toHaveLength(CALENDAR_CELLS)
+    expect(days).toHaveLength(35)
     expect(days[0].date).toBe('2026-08-31')
     expect(days[0].inMonth).toBe(false)
     expect(gridStart(2026, 9)).toBe('2026-08-31')
   })
 
-  it('月末与网格末尾正确（9 月 30 天 → 末格 10-11）', () => {
+  it('月末与网格末尾正确（9 月 30 天 → 末格 10-04，10/05–11 整行邻月被裁）', () => {
     const days = runGrid({ plans: [] })
     expect(monthFirstDay(2026, 9)).toBe('2026-09-01')
     expect(monthLastDay(2026, 9)).toBe('2026-09-30')
-    expect(days[CALENDAR_CELLS - 1].date).toBe('2026-10-11')
-    expect(days[CALENDAR_CELLS - 1].inMonth).toBe(false)
+    expect(days[days.length - 1].date).toBe('2026-10-04')
+    expect(days[days.length - 1].inMonth).toBe(false)
+  })
+
+  it('整行都落在下个月的补位格不整行显示，与当月同一行的邻月格保留', () => {
+    const days = runGrid({ plans: [] })
+    // 末行 = 09-28 … 10-04（含 9 月日期）→ 保留；其后的 10-05 … 10-11 整行删掉
+    expect(days.some((d) => d.date === '2026-10-05')).toBe(false)
+    expect(days.some((d) => d.date === '2026-10-11')).toBe(false)
+    // 跟当月同处一行的邻月补位格照常显示（用户允许「在一起一行就行」）
+    expect(days.some((d) => d.date === '2026-10-01')).toBe(true)
+    expect(days.some((d) => d.date === '2026-08-31')).toBe(true)
   })
 
   it('2 月按闰年取天数（不维护月份天数表）', () => {
@@ -152,7 +162,7 @@ describe('月历网格结构', () => {
 
   it('日期连续、不重复，inMonth 只落在本月', () => {
     const days = runGrid({ plans: [] })
-    expect(new Set(days.map((d) => d.date)).size).toBe(CALENDAR_CELLS)
+    expect(new Set(days.map((d) => d.date)).size).toBe(days.length)
     expect(days.filter((d) => d.inMonth)).toHaveLength(30)
     for (let i = 1; i < days.length; i++) {
       const prev = new Date(`${days[i - 1].date}T00:00:00`).getTime()
@@ -344,5 +354,39 @@ describe('与今日页共用同一套判定', () => {
     })
     expect(byDate(days, '2026-09-21').status).toBe('paused')
     expect(byDate(days, '2026-09-19').status).not.toBe('paused')
+  })
+})
+
+describe('countMonthStatus · 当月「已记 / 漏服」天数（§8.4 设计 3:318 标题统计行）', () => {
+  it('没有启用计划 → 已记与漏服都为 0', () => {
+    expect(countMonthStatus(runGrid({ plans: [] }))).toEqual({ taken: 0, missed: 0 })
+  })
+
+  it('只统计 inMonth 的格 —— 邻月补位格不进任何计数', () => {
+    const days = runGrid({ plans: [plan('p1', 's1')] })
+    const full = countMonthStatus(days)
+    const inMonthOnly = countMonthStatus(days.filter((d) => d.inMonth))
+    expect(full).toEqual(inMonthOnly)
+  })
+
+  it('已记 = 有 taken 点在月内天数；漏服 = 有 missed 点在月内天数', () => {
+    const days = runGrid({
+      plans: [plan('p1', 's1')],
+      records: [record('r1', '2026-09-10', 's1'), record('r2', '2026-09-11', 's1')],
+    })
+    const result = countMonthStatus(days)
+    expect(result.taken).toBe(2)
+    expect(result.missed).toBe(days.filter((d) => d.inMonth && d.dots.includes('missed')).length)
+  })
+
+  it('部分完成的一天（taken + missed 并存）同时计入两栏', () => {
+    const days = runGrid({
+      plans: [plan('p1', 's1', { timeSlots: ['morning', 'evening'] })],
+      records: [record('r1', '2026-09-10', 's1', 'morning')],
+    })
+    expect(byDate(days, '2026-09-10').dots).toEqual(['taken', 'missed'])
+    const result = countMonthStatus(days)
+    expect(result.taken).toBe(1)
+    expect(result.missed).toBe(days.filter((d) => d.inMonth && d.dots.includes('missed')).length)
   })
 })
