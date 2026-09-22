@@ -81,11 +81,20 @@ export async function exportToFile(): Promise<void> {
   const payload = await buildExport()
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
+
   const anchor = document.createElement('a')
   anchor.href = url
   anchor.download = `suptrack-backup-${payload.exportedAt.slice(0, 10)}.json`
+  // 必须挂进 DOM 再点：游离节点上的 click() 在部分浏览器里不触发下载。
+  // 而且不能在 click() 之后立刻移除节点或 revoke —— 浏览器还没开始读 blob，
+  // 那样会把下载掐断（表现就是「下载被取消」）。
+  document.body.appendChild(anchor)
   anchor.click()
-  URL.revokeObjectURL(url)
+  window.setTimeout(() => {
+    anchor.remove()
+    URL.revokeObjectURL(url)
+  }, 1000)
+
   await metaService.setLastExportAt(payload.exportedAt)
 }
 

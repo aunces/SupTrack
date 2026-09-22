@@ -6,7 +6,7 @@ export function registerServiceWorker(): void {
   if (import.meta.env.DEV) return
   if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return
 
-  window.addEventListener('load', () => {
+  const start = () => {
     void navigator.serviceWorker.register('./sw.js').then((registration) => {
       registration.addEventListener('updatefound', () => {
         const installing = registration.installing
@@ -20,5 +20,10 @@ export function registerServiceWorker(): void {
         })
       })
     })
-  })
+  }
+
+  // 本函数是异步 bootstrap() 里调用的，`load` 很可能已经触发过了 ——
+  // 只挂 addEventListener('load') 会永久错过，SW 静默不注册、离线刷新直接失败。
+  if (document.readyState === 'complete') start()
+  else window.addEventListener('load', start, { once: true })
 }

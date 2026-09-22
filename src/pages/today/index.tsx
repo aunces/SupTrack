@@ -1,443 +1,261 @@
-import { useLiveQuery } from 'dexie-react-hooks'
-import { useMemo, useState } from 'react'
-import BackfillDialog from '@/components/backfill/BackfillDialog'
-import MissedPlansBanner from '@/components/backfill/MissedPlansBanner'
-import { Badge } from '@/components/ui/badge'
+import { type ReactNode, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/components/common/EmptyState'
+import { ErrorState } from '@/components/common/ErrorState'
+import { LoadingSkeleton } from '@/components/common/LoadingSkeleton'
+import { DayListItem } from '@/components/today/DayListItem'
+import { ManualIntakeDialog } from '@/components/today/ManualIntakeDialog'
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
-  DEFAULT_LOW_STOCK_DAYS,
-  INTAKE_STATUS_LABEL,
-  PLANNED_AMOUNT_SOURCE,
+  DENSE_COLLAPSE_THRESHOLD,
+  INTAKE_ORIGIN,
+  INTAKE_ORIGIN_LABEL,
   TIME_SLOT_LABEL,
-  TIME_SLOT_VALUES,
 } from '@/constants/enums'
-import { getActivePlansForDate } from '@/services/backfillService'
 import { UNIT_TYPE_LABEL } from '@/constants/units'
-import { useTodayData, type TodayPlanItem } from '@/hooks/useTodayData'
-import { supplementRepository } from '@/repositories'
-import { metaService } from '@/services/metaService'
-import { createIntake, softDeleteIntake } from '@/services/intakeService'
-import { summarizeDate } from '@/services/summaryService'
-import { useDataVersion } from '@/stores/dataVersion'
+import { useTodayData, type TodayGroup, type TodayWarnings } from '@/hooks/useTodayData'
+import { exportToFile } from '@/services/importExportService'
+import { undoIntake } from '@/services/intakeService'
 import { toast } from '@/stores/toastStore'
-import type { DailyIntake, TimeSlot } from '@/types'
-import { backfillRange, isBackfill, isExpiringSoon } from '@/utils/date'
-import IntakeEditDialog from '@/components/intake/IntakeEditDialog'
-import { buildIntake } from '@/utils/intakeFactory'
-import { useMissedPlans } from '@/hooks/useMissedPlans'
+import { formatDateLabel } from '@/utils/date'
+import type { DayItem } from '@/utils/dayState'
 
-export function TodayPage() {
-  const { date, groups, supplements, records, loading } = useTodayData()
-  const version = useDataVersion((s) => s.version)
-  const { invalidate } = useMissedPlans()
+/**
+ * 今日页（§8.1）★ 全产品价值集中在这一屏。
+ *
+ * 目标：打开 5 秒内知道今天吃什么 → 点一下完成记录 → 不跳转、不滚动、不弹窗。
+ *
+ * 明确不做（别顺手加上）：
+ *   ❌ 日期切换（回看是日历页的职责）  ❌ 完成度百分比 / 进度环
+ *   ❌ 庆祝动效 / 连续打卡天数 / 健康评分  ❌ 「今天先不吃」快捷入口
+ */
 
-  const [backfillOpen, setBackfillOpen] = useState(false)
-  const [manualOpen, setManualOpen] = useState(false)
-  const [busyId, setBusyId] = useState<string | null>(null)
-  const [editingRecord, setEditingRecord] = useState<DailyIntake | null>(null)
-
-  const supplementOf = (id: string) => supplements.find((s) => s.id === id)
-  const nameOf = (id: string) => supplementOf(id)?.name ?? '[已删除的补剂]'
-  const unitOf = (id: string) => {
-    const found = supplementOf(id)
-    return found ? UNIT_TYPE_LABEL[found.unitType] : ''
-  }
-
-  const windowDays = useLiveQuery(() => metaService.getBackfillWindowDays(), [], 30) ?? 30
-  const range = useMemo(() => backfillRange(windowDays), [windowDays])
-  const summary = useLiveQuery(() => summarizeDate(date), [date, version], [])
-  const activePlans = useLiveQuery(() => getActivePlansForDate(date), [date, version], [])
-
-  const warnings = useMemo(() => {
-    const negative = supplements.filter(
-      (s) => s.stockCountInUsageUnit != null && s.stockCountInUsageUnit < 0,
-    )
-    const expiring = supplements.filter((s) => isExpiringSoon(s.expiryDate))
-    // 库存不足：按当日计划推算剩余可用天数 < 阈值
-    const lowStock = supplements.filter((s) => {
-      if (s.stockCountInUsageUnit == null) return false
-      const dailyUsage = activePlans
-        .filter((p) => p.supplementId === s.id)
-        .reduce((sum, p) => sum + p.dailyAmount, 0)
-      if (dailyUsage <= 0) return false
-      return (
-        s.stockCountInUsageUnit >= 0 &&
-        s.stockCountInUsageUnit / dailyUsage < DEFAULT_LOW_STOCK_DAYS
-      )
-    })
-    return { negative, expiring, lowStock }
-  }, [supplements, activePlans])
-
-  async function handleCheckIn(item: TodayPlanItem) {
-    if (!item.supplement) return
-    if (isExpiringSoon(item.supplement.expiryDate)) {
-      if (!window.confirm(`${item.supplement.name} 已临近过期，仍要打卡吗？`)) return
-    }
-    setBusyId(`${item.plan.id}|${item.timeSlot}`)
-    try {
-      await createIntake(
-        buildIntake({
-          date,
-          supplementId: item.plan.supplementId,
-          timeSlot: item.timeSlot,
-          actualAmount: item.plan.dailyAmount,
-          status: 'taken',
-          source: 'plan',
-          planId: item.plan.id,
-          plannedAmountSnapshot: item.plan.dailyAmount,
-          plannedAmountSource: PLANNED_AMOUNT_SOURCE.PLAN_SNAPSHOT,
-        }),
-        'today',
-      )
-      toast(`已打卡：${item.supplement.name}`)
-      invalidate()
-    } catch (error) {
-      toast((error as Error).message, { variant: 'destructive' })
-    } finally {
-      setBusyId(null)
-    }
-  }
-
-  async function handleUndoRecord(record: DailyIntake) {
-    try {
-      await softDeleteIntake(record.id)
-      toast('已撤销，可在「设置 → 回收站」恢复')
-    } catch (error) {
-      toast((error as Error).message, { variant: 'destructive' })
-    }
-  }
-
-  async function handleUndo(item: TodayPlanItem) {
-    if (!item.record) return
-    setBusyId(`${item.plan.id}|${item.timeSlot}`)
-    try {
-      await handleUndoRecord(item.record)
-    } finally {
-      setBusyId(null)
-    }
-  }
-
+/** 分组容器：用 div 而不是 Card，是为了压住 Card 默认的 py-6 / gap-6（信息密度优先） */
+function GroupSection({
+  title,
+  meta,
+  children,
+}: {
+  title: ReactNode
+  meta?: ReactNode
+  children: ReactNode
+}) {
   return (
-    <div className="p-6">
-      <header className="mb-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold">今日 · {date}</h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            按时段完成打卡，漏服请在次日通过补录标记。
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setBackfillOpen(true)}>
-            补录昨日
-          </Button>
-          <Button onClick={() => setManualOpen(true)}>手动录入</Button>
-        </div>
+    <section className="bg-card mb-4 rounded-xl border">
+      <header className="flex items-center justify-between border-b px-4 py-2.5">
+        <span className="text-sm font-medium">{title}</span>
+        {meta ? <span className="text-muted-foreground text-xs tabular-nums">{meta}</span> : null}
       </header>
-
-      <MissedPlansBanner onBackfill={() => setBackfillOpen(true)} />
-
-      {(warnings.negative.length > 0 ||
-        warnings.expiring.length > 0 ||
-        warnings.lowStock.length > 0) && (
-        <div className="mb-4 rounded-md border border-amber-400 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          {warnings.negative.length > 0 && (
-            <div>
-              库存为负：{warnings.negative.map((s) => s.name).join('、')}，请补货或调整库存。
-            </div>
-          )}
-          {warnings.expiring.length > 0 && (
-            <div>临期补剂：{warnings.expiring.map((s) => s.name).join('、')}</div>
-          )}
-          {warnings.lowStock.length > 0 && (
-            <div>库存不足：{warnings.lowStock.map((s) => s.name).join('、')}（不足 7 天用量）</div>
-          )}
-        </div>
-      )}
-
-      {loading ? (
-        <p className="text-muted-foreground text-sm">加载中…</p>
-      ) : groups.length === 0 ? (
-        <p className="text-muted-foreground py-10 text-center text-sm">
-          今天没有启用的计划，先去补剂库添加补剂并创建服用计划。
-        </p>
-      ) : (
-        <div className="flex flex-col gap-4">
-          {groups.map((group) => (
-            <Card key={group.timeSlot}>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">{TIME_SLOT_LABEL[group.timeSlot]}</CardTitle>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-2">
-                {group.items.map((item) => {
-                  const key = `${item.plan.id}|${item.timeSlot}`
-                  const unit = item.supplement
-                    ? ` ${UNIT_TYPE_LABEL[item.supplement.unitType]}`
-                    : ''
-                  return (
-                    <div
-                      key={key}
-                      className="flex items-center justify-between rounded-md border px-3 py-2"
-                    >
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 text-sm font-medium">
-                          {item.supplement?.name ?? '[已删除的补剂]'}
-                          {item.paused && <Badge variant="secondary">停药中</Badge>}
-                        </div>
-                        <div className="text-muted-foreground text-xs">
-                          计划 {item.plan.dailyAmount}
-                          {unit}
-                          {item.record && ` · 实际 ${item.record.actualAmount}${unit}`}
-                          {item.record && ` · ${INTAKE_STATUS_LABEL[item.record.status]}`}
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        {item.record ? (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={busyId === key}
-                            onClick={() => handleUndo(item)}
-                          >
-                            撤销
-                          </Button>
-                        ) : (
-                          <Button
-                            size="sm"
-                            disabled={busyId === key}
-                            onClick={() => handleCheckIn(item)}
-                          >
-                            打卡
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      <Card className="mt-6">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm">今日记录（{records.length}）</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {records.length === 0 ? (
-            <p className="text-muted-foreground text-sm">今天还没有任何记录。</p>
-          ) : (
-            <ul className="flex flex-col">
-              {records.map((record) => (
-                <li
-                  key={record.id}
-                  className="flex items-center justify-between border-b py-2 last:border-b-0"
-                >
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-medium">
-                      {nameOf(record.supplementId)}
-                    </div>
-                    <div className="text-muted-foreground text-xs">
-                      {TIME_SLOT_LABEL[record.timeSlot]} · {record.actualAmount}{' '}
-                      {unitOf(record.supplementId)} · {INTAKE_STATUS_LABEL[record.status]}
-                      {record.source === 'manual' ? ' · 手动录入' : ' · 计划打卡'}
-                      {isBackfill(record.date, record.createdAt) ? ' · 补录' : ''}
-                    </div>
-                  </div>
-                  <div className="flex shrink-0 gap-1">
-                    <Button size="sm" variant="ghost" onClick={() => setEditingRecord(record)}>
-                      修改
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => handleUndoRecord(record)}>
-                      撤销
-                    </Button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-          <p className="text-muted-foreground mt-3 text-xs">
-            撤销 = 删除该记录并回滚库存，之后可在「设置 → 回收站」恢复或彻底删除。
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card className="mt-6">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm">今日成分摄入</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {(summary ?? []).length === 0 ? (
-            <p className="text-muted-foreground text-sm">
-              {records.length > 0
-                ? '今日记录的补剂尚未关联成分，请到「补剂库 → 成分」配置每份含量。'
-                : '暂无数据'}
-            </p>
-          ) : (
-            <ul className="flex flex-col gap-1 text-sm">
-              {(summary ?? []).map((item) => (
-                <li key={`${item.ingredientId}-${item.unit}`} className="flex justify-between">
-                  <span>
-                    {item.name}
-                    {item.hasDeletedSupplement && (
-                      <span className="text-muted-foreground ml-1 text-xs">含已删除补剂</span>
-                    )}
-                  </span>
-                  <span
-                    className={
-                      item.upperLimit != null && item.total > item.upperLimit
-                        ? 'text-destructive font-medium'
-                        : ''
-                    }
-                  >
-                    {item.displayValue} {item.displayUnit}
-                    {item.upperLimit != null && ` / 上限 ${item.upperLimit}${item.unit}`}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-          <p className="text-muted-foreground mt-3 text-xs">
-            数据基于标签含量累加，不代表医学精确摄入量。
-          </p>
-        </CardContent>
-      </Card>
-
-      <BackfillDialog
-        open={backfillOpen}
-        onOpenChange={setBackfillOpen}
-        defaultDate={range.max}
-        range={range}
-        onFinished={invalidate}
-      />
-      <ManualIntakeDialog open={manualOpen} onOpenChange={setManualOpen} date={date} />
-      <IntakeEditDialog
-        record={editingRecord}
-        supplementName={editingRecord ? nameOf(editingRecord.supplementId) : ''}
-        unit={editingRecord ? unitOf(editingRecord.supplementId) : ''}
-        onClose={() => setEditingRecord(null)}
-      />
-    </div>
+      <div className="divide-y">{children}</div>
+    </section>
   )
 }
 
-function ManualIntakeDialog({
-  open,
-  onOpenChange,
-  date,
-}: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  date: string
-}) {
-  const supplements = useLiveQuery(() => supplementRepository.all(), [], [])
-  const [supplementId, setSupplementId] = useState('')
-  const [timeSlot, setTimeSlot] = useState<TimeSlot>('morning')
-  const [amount, setAmount] = useState(1)
-  const [submitting, setSubmitting] = useState(false)
+function TimeSlotGroup({ group, lowStockIds }: { group: TodayGroup; lowStockIds: Set<string> }) {
+  // 密集折叠（W-01）：同时段「休息 + 停用」≥ 3 项时折叠为一行。
+  // 待吃 / 已吃**永不折叠** —— 折叠待办会让用户找不到要打勾的那一项。
+  const [expanded, setExpanded] = useState(false)
+  const visibleItems = group.items.filter(
+    (item) => item.state === 'pending' || item.state === 'taken',
+  )
+  const offItems = group.items.filter((item) => item.state === 'rest' || item.state === 'paused')
+  const pausedCount = offItems.filter((item) => item.state === 'paused').length
+  const collapsed = offItems.length >= DENSE_COLLAPSE_THRESHOLD
+  const showOff = !collapsed || expanded
 
-  async function submit() {
-    if (!supplementId) {
-      toast('请选择补剂')
-      return
-    }
-    setSubmitting(true)
+  return (
+    <GroupSection
+      title={TIME_SLOT_LABEL[group.timeSlot]}
+      meta={
+        <>
+          {group.pendingCount} 待吃 · {group.takenCount} 已吃
+          {group.offCount > 0 ? ` · ${group.offCount} 今天不用吃` : ''}
+        </>
+      }
+    >
+      {visibleItems.map((item) => (
+        <DayListItem
+          key={`${item.supplementId}-${item.timeSlot}`}
+          item={item}
+          lowStock={lowStockIds.has(item.supplementId)}
+        />
+      ))}
+
+      {showOff
+        ? offItems.map((item) => (
+            <DayListItem
+              key={`${item.supplementId}-${item.timeSlot}`}
+              item={item}
+              lowStock={lowStockIds.has(item.supplementId)}
+            />
+          ))
+        : null}
+
+      {collapsed && !expanded ? (
+        <button
+          type="button"
+          className="text-muted-foreground hover:bg-accent/40 w-full px-4 py-2.5 text-left text-xs"
+          onClick={() => setExpanded(true)}
+        >
+          ▾ 另有 {offItems.length} 项今天不用吃
+          {pausedCount > 0 ? `（含 ${pausedCount} 项停用中）` : ''}
+        </button>
+      ) : null}
+    </GroupSection>
+  )
+}
+
+function WarningCard({ warnings }: { warnings: TodayWarnings }) {
+  const rows = [
+    { label: '库存为负', items: warnings.negative },
+    { label: '临期', items: warnings.expiring },
+    { label: '余量偏低', items: warnings.lowStock },
+  ].filter((row) => row.items.length > 0)
+
+  if (rows.length === 0) return null
+
+  return (
+    <section className="bg-card mb-4 space-y-1 rounded-xl border px-4 py-3">
+      {rows.map((row) => (
+        // 用暖色点缀，**不用红色** —— 这不是错误，是提醒
+        <p key={row.label} className="text-xs text-amber-600">
+          {row.label}：
+          {row.items.map((item, index) => (
+            <span key={item.id}>
+              {index > 0 ? '、' : ''}
+              <Link
+                className="underline underline-offset-2"
+                to={`/supplements?highlight=${item.id}`}
+              >
+                {item.name}
+              </Link>
+            </span>
+          ))}
+        </p>
+      ))}
+    </section>
+  )
+}
+
+function ExtraRecords({ items }: { items: DayItem[] }) {
+  async function handleUndo(item: DayItem) {
+    const id = item.recordIds.at(-1)
+    if (!id) return
     try {
-      await createIntake(
-        buildIntake({
-          date,
-          supplementId,
-          timeSlot,
-          actualAmount: amount,
-          status: 'taken',
-          source: 'manual',
-          plannedAmountSource: PLANNED_AMOUNT_SOURCE.UNAVAILABLE,
-        }),
-        'today',
-      )
-      toast('已记录')
-      onOpenChange(false)
+      await undoIntake(id)
     } catch (error) {
       toast((error as Error).message, { variant: 'destructive' })
-    } finally {
-      setSubmitting(false)
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>手动录入（{date}）</DialogTitle>
-        </DialogHeader>
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-col gap-1">
-            <Label>补剂</Label>
-            <Select value={supplementId} onValueChange={setSupplementId}>
-              <SelectTrigger>
-                <SelectValue placeholder="选择补剂" />
-              </SelectTrigger>
-              <SelectContent>
-                {supplements.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+    <GroupSection title="计划外记录" meta={`今天额外记了 ${items.length} 条`}>
+      {items.map((item) => (
+        <div
+          key={`${item.supplementId}-${item.timeSlot}-${item.recordIds.join(',')}`}
+          className="flex items-center justify-between gap-3 px-4 py-2.5"
+        >
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium">
+              {item.supplement?.name ?? '[已删除的补剂]'}
+            </p>
+            <p className="text-muted-foreground text-xs">
+              <span className="tabular-nums">{item.takenAmount}</span>{' '}
+              {item.supplement ? UNIT_TYPE_LABEL[item.supplement.unitType] : '份'}
+              {' · '}
+              {INTAKE_ORIGIN_LABEL[item.origin ?? INTAKE_ORIGIN.MANUAL]}
+            </p>
           </div>
-          <div className="flex flex-col gap-1">
-            <Label>时段</Label>
-            <Select value={timeSlot} onValueChange={(v) => setTimeSlot(v as TimeSlot)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {TIME_SLOT_VALUES.map((slot) => (
-                  <SelectItem key={slot} value={slot}>
-                    {TIME_SLOT_LABEL[slot]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex flex-col gap-1">
-            <Label>数量</Label>
-            <Input
-              type="number"
-              min={1}
-              value={amount}
-              onChange={(e) => setAmount(Number(e.target.value))}
-            />
-          </div>
+          <Button size="sm" variant="outline" onClick={() => handleUndo(item)}>
+            撤销
+          </Button>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            取消
-          </Button>
-          <Button onClick={submit} disabled={submitting}>
-            保存
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      ))}
+    </GroupSection>
+  )
+}
+
+export function TodayPage() {
+  const {
+    date,
+    groups,
+    extraItems,
+    summary,
+    warnings,
+    supplementCount,
+    activePlanCount,
+    loading,
+    error,
+  } = useTodayData()
+  const [manualOpen, setManualOpen] = useState(false)
+
+  const lowStockIds = new Set(warnings.lowStock.map((s) => s.id))
+  const nothingToShow = groups.length === 0 && extraItems.length === 0
+
+  return (
+    <div className="mx-auto w-full max-w-[720px] p-6">
+      <header className="mb-4 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold">今天 · {formatDateLabel(date)}</h1>
+          {/* P4：第三个数字独立呈现，不计入任何分母 */}
+          <p className="text-muted-foreground mt-1 text-sm tabular-nums">
+            待吃 {summary.pending} · 已吃 {summary.taken} · 今天不用吃 {summary.off}
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => setManualOpen(true)}>
+          手动录入
+        </Button>
+      </header>
+
+      {error ? (
+        <ErrorState
+          className="mb-4"
+          error={error}
+          onRetry={() => window.location.reload()}
+          onExport={() => void exportToFile()}
+        />
+      ) : null}
+
+      {!error && loading ? <LoadingSkeleton lines={3} /> : null}
+
+      {!error && !loading && supplementCount === 0 ? (
+        <EmptyState
+          title="还没有要吃的补剂"
+          description="先添加一个补剂，再设置它的服用节奏"
+          action={
+            <Button asChild>
+              <Link to="/supplements?new=1">添加补剂</Link>
+            </Button>
+          }
+        />
+      ) : null}
+
+      {/* 「全部关闭」的判据是「有补剂但无启用计划」（§8.1），不是「今天没内容」——
+          节奏起点在未来时今天确实没内容，但补剂并没有被停用，不该说「都已停用」 */}
+      {!error && !loading && supplementCount > 0 && activePlanCount === 0 ? (
+        <EmptyState
+          title="所有补剂都已停用"
+          description="启用的计划才会出现在这里"
+          action={
+            <Button variant="outline" asChild>
+              <Link to="/supplements">去补剂页看看</Link>
+            </Button>
+          }
+        />
+      ) : null}
+
+      {!error && !loading && !nothingToShow ? <WarningCard warnings={warnings} /> : null}
+
+      {!error && !loading
+        ? groups.map((group) => (
+            <TimeSlotGroup key={group.timeSlot} group={group} lowStockIds={lowStockIds} />
+          ))
+        : null}
+
+      {!error && !loading && extraItems.length > 0 ? <ExtraRecords items={extraItems} /> : null}
+
+      <ManualIntakeDialog open={manualOpen} onOpenChange={setManualOpen} />
+    </div>
   )
 }
 

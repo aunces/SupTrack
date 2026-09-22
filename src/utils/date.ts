@@ -53,6 +53,11 @@ export function formatShortDate(date: string): string {
   return format(parseISO(date), 'M/d')
 }
 
+/** 24 小时制时间，如「08:12」。入参是 ISO 时间戳 */
+export function formatTime(iso: string): string {
+  return format(new Date(iso), 'HH:mm')
+}
+
 /** 补录可选范围 [today-7, yesterday]。窗口固定 7 天，不可配置（D-07） */
 export function backfillRange(): { min: string; max: string } {
   return { min: addDays(today(), -BACKFILL_WINDOW_DAYS), max: yesterday() }

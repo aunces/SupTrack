@@ -1,17 +1,17 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { db } from '@/db'
-import { hasActivePlan, savePlanForSupplement } from '@/services/planService'
+import { hasActivePlan, savePlanForSupplement, type PlanDraftInput } from '@/services/planService'
 import { resetDb, seedSupplement } from '../helpers/db'
 
 beforeEach(async () => {
   await resetDb()
 })
 
-function rateInput(overrides: Record<string, unknown> = {}) {
+function rateInput(overrides: Partial<PlanDraftInput> = {}): PlanDraftInput {
   return {
     amountPerTime: 1,
-    timeSlots: ['morning'] as const,
-    rateMode: 'daily' as const,
+    timeSlots: ['morning'],
+    rateMode: 'daily',
     rateOnDays: null,
     rateOffDays: null,
     rateAnchorDate: null,
@@ -99,7 +99,7 @@ describe('savePlanForSupplement', () => {
     const supplement = await seedSupplement()
     const plan = await savePlanForSupplement(
       supplement.id,
-      rateInput({ timeSlots: ['morning', 'morning', 'evening'] as unknown as ['morning'] }),
+      rateInput({ timeSlots: ['morning', 'morning', 'evening'] }),
     )
     expect(plan.timeSlots.sort()).toEqual(['evening', 'morning'])
   })

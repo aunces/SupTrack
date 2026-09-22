@@ -1,277 +1,185 @@
-import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { CYCLE_MODE_LABEL, CYCLE_MODE_VALUES, type CycleMode } from '@/constants/enums'
-import { pausePeriodRepository, supplementRepository } from '@/repositories'
+import { EmptyState } from '@/components/common/EmptyState'
+import { ConfirmDialog } from '@/components/common/ConfirmDialog'
+import { LoadingSkeleton } from '@/components/common/LoadingSkeleton'
+import { PausePeriodDialog } from '@/components/pause/PausePeriodDialog'
+import { usePauseData, type PausePeriodRow } from '@/hooks/usePauseData'
+import { deletePausePeriod } from '@/services/pauseService'
 import { toast } from '@/stores/toastStore'
+import { formatShortDate } from '@/utils/date'
 import type { PausePeriod } from '@/types'
-import { newId, nowIso } from '@/utils/id'
-import { today } from '@/utils/date'
 
-function emptyForm() {
-  return {
-    supplementId: 'global',
-    startDate: today(),
-    endDate: '',
-    reason: '',
-    cycleMode: 'none' as CycleMode,
-    cycleStartDate: '',
-    cycleOnDays: '',
-    cycleOffDays: '',
-  }
+/**
+ * 停药页（§8.3）。
+ *
+ * 两个分区并列，不藏进 Tab —— 它们对应两种真实用法：
+ *   方案组 = 成套情景，一键切换（M2）
+ *   临时停药 = 随手加一条，轻量高频（M1）
+ * M1 就把「方案组」分区的骨架渲染出来，避免 M2 再改一次信息架构。
+ */
+
+function Section({
+  title,
+  action,
+  children,
+}: {
+  title: string
+  action?: React.ReactNode
+  children: React.ReactNode
+}) {
+  return (
+    <section className="bg-card mb-4 rounded-xl border">
+      <header className="flex items-center justify-between border-b px-4 py-2.5">
+        <span className="text-sm font-medium">{title}</span>
+        {action}
+      </header>
+      <div className="divide-y">{children}</div>
+    </section>
+  )
+}
+
+/** 「9/19 → 9/21 · 原因：胃不舒服」或「9/25 起 · 持续中（未设结束日）」 */
+function describeRange(period: PausePeriod): string {
+  if (period.startDate == null) return '跟随方案组'
+  const start = formatShortDate(period.startDate)
+  if (period.endDate == null) return `${start} 起 · 持续中（未设结束日）`
+  return `${start} → ${formatShortDate(period.endDate)}`
 }
 
 export function PausePeriodsPage() {
-  const rows = useLiveQuery(() => pausePeriodRepository.all(), [], [])
-  const supplements = useLiveQuery(() => supplementRepository.all(), [], [])
-  const [open, setOpen] = useState(false)
+  const { schemes, periods, supplements, loading } = usePauseData()
+  const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<PausePeriod | null>(null)
-  const [form, setForm] = useState(emptyForm())
+  const [deleting, setDeleting] = useState<PausePeriodRow | null>(null)
 
-  const nameOf = (id: string | null) =>
-    id == null ? '全局' : (supplements.find((s) => s.id === id)?.name ?? '[已删除]')
-
-  function startCreate() {
+  function openCreate() {
     setEditing(null)
-    setForm(emptyForm())
-    setOpen(true)
+    setDialogOpen(true)
   }
 
-  function startEdit(row: PausePeriod) {
-    setEditing(row)
-    setForm({
-      supplementId: row.supplementId ?? 'global',
-      startDate: row.startDate,
-      endDate: row.endDate ?? '',
-      reason: row.reason ?? '',
-      cycleMode: row.cycleMode,
-      cycleStartDate: row.cycleStartDate ?? '',
-      cycleOnDays: row.cycleOnDays == null ? '' : String(row.cycleOnDays),
-      cycleOffDays: row.cycleOffDays == null ? '' : String(row.cycleOffDays),
-    })
-    setOpen(true)
-  }
-
-  async function save() {
-    const base = {
-      supplementId: form.supplementId === 'global' ? null : form.supplementId,
-      startDate: form.startDate,
-      endDate: form.endDate || null,
-      reason: form.reason.trim() || null,
-      cycleMode: form.cycleMode,
-      cycleStartDate: form.cycleMode === 'cyclic' ? form.startDate : null,
-      cycleOnDays:
-        form.cycleMode === 'cyclic' && form.cycleOnDays ? Number(form.cycleOnDays) : null,
-      cycleOffDays:
-        form.cycleMode === 'cyclic' && form.cycleOffDays ? Number(form.cycleOffDays) : null,
-    }
-    try {
-      if (editing) {
-        await pausePeriodRepository.update(editing.id, { ...base, updatedAt: nowIso() })
-        toast('已保存')
-      } else {
-        await pausePeriodRepository.create({
-          id: newId(),
-          ...base,
-          deletedAt: 0,
-          createdAt: nowIso(),
-          updatedAt: nowIso(),
-        })
-        toast('已创建')
-      }
-      setOpen(false)
-    } catch (error) {
-      toast((error as Error).message, { variant: 'destructive' })
-    }
-  }
-
-  async function remove(row: PausePeriod) {
-    if (!window.confirm('删除该停药期？')) return
-    await pausePeriodRepository.softDelete(row.id)
-    toast('已删除，可在回收站恢复')
+  function openEdit(period: PausePeriod) {
+    setEditing(period)
+    setDialogOpen(true)
   }
 
   return (
-    <div className="p-6">
-      <header className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">停药期</h1>
-        <Button onClick={startCreate}>新增停药期</Button>
-      </header>
+    <div className="mx-auto w-full max-w-[720px] p-6">
+      <h1 className="mb-4 text-xl font-semibold">停药</h1>
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm">共 {rows.length} 项（补剂级与全局取并集）</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {rows.length === 0 ? (
-            <p className="text-muted-foreground py-8 text-center text-sm">当前没有生效的停药期。</p>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-muted-foreground text-left text-xs">
-                  <th className="py-2">范围</th>
-                  <th>开始</th>
-                  <th>结束</th>
-                  <th>模式</th>
-                  <th>原因</th>
-                  <th className="text-right">操作</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={row.id} className="border-t">
-                    <td className="py-2">{nameOf(row.supplementId ?? null)}</td>
-                    <td>{row.startDate}</td>
-                    <td>{row.endDate ?? '持续中'}</td>
-                    <td>
-                      {CYCLE_MODE_LABEL[row.cycleMode]}
-                      {row.cycleMode === 'cyclic'
-                        ? `（吃 ${row.cycleOnDays} 停 ${row.cycleOffDays}）`
-                        : ''}
-                    </td>
-                    <td>{row.reason ?? '-'}</td>
-                    <td className="text-right">
-                      <Button size="sm" variant="ghost" onClick={() => startEdit(row)}>
-                        编辑
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => remove(row)}>
-                        删除
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </CardContent>
-      </Card>
+      {loading ? <LoadingSkeleton lines={3} /> : null}
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editing ? '编辑停药期' : '新增停药期'}</DialogTitle>
-          </DialogHeader>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2 flex flex-col gap-1">
-              <Label>范围</Label>
-              <Select
-                value={form.supplementId}
-                onValueChange={(v) => setForm({ ...form, supplementId: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="global">全局停药</SelectItem>
-                  {supplements.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex flex-col gap-1">
-              <Label>开始日期</Label>
-              <Input
-                type="date"
-                value={form.startDate}
-                onChange={(e) => setForm({ ...form, startDate: e.target.value })}
+      {!loading ? (
+        <>
+          <Section title="停药方案组">
+            {schemes.length === 0 ? (
+              <EmptyState
+                className="border-0"
+                title="还没有停药方案组"
+                description="一套情景可以同时停多种补剂，需要时一键切换"
               />
-            </div>
-            <div className="flex flex-col gap-1">
-              <Label>结束日期（可空）</Label>
-              <Input
-                type="date"
-                value={form.endDate}
-                onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-              />
-            </div>
-            <div className="col-span-2 flex flex-col gap-1">
-              <Label>模式</Label>
-              <Select
-                value={form.cycleMode}
-                onValueChange={(v) => setForm({ ...form, cycleMode: v as CycleMode })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {CYCLE_MODE_VALUES.map((mode) => (
-                    <SelectItem key={mode} value={mode}>
-                      {CYCLE_MODE_LABEL[mode]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {form.cycleMode === 'cyclic' && (
-              <>
-                <div className="flex flex-col gap-1">
-                  <Label>周期锚点</Label>
-                  <Input
-                    type="date"
-                    value={form.cycleStartDate || form.startDate}
-                    onChange={(e) => setForm({ ...form, cycleStartDate: e.target.value })}
-                  />
+            ) : (
+              schemes.map(({ scheme, entryCount }) => (
+                <div
+                  key={scheme.id}
+                  className="flex items-center justify-between gap-3 px-4 py-2.5"
+                >
+                  <div className="min-w-0">
+                    <p className="flex items-center gap-2 text-sm font-medium">
+                      <span className={scheme.isActive ? 'text-violet-500' : 'text-slate-400'}>
+                        {scheme.isActive ? '●' : '○'}
+                      </span>
+                      {scheme.name}
+                      {scheme.isActive ? <Badge variant="secondary">执行中</Badge> : null}
+                    </p>
+                    <p className="text-muted-foreground text-xs tabular-nums">
+                      覆盖 {entryCount} 项
+                      {scheme.activatedAt ? ` · ${formatShortDate(scheme.activatedAt)} 起` : ''}
+                      {scheme.endedAt ? ' · 已停止' : ''}
+                    </p>
+                  </div>
                 </div>
-                <div />
-                <div className="flex flex-col gap-1">
-                  <Label>服用天数</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    value={form.cycleOnDays}
-                    onChange={(e) => setForm({ ...form, cycleOnDays: e.target.value })}
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <Label>停药天数</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    value={form.cycleOffDays}
-                    onChange={(e) => setForm({ ...form, cycleOffDays: e.target.value })}
-                  />
-                </div>
-              </>
+              ))
             )}
-            <div className="col-span-2 flex flex-col gap-1">
-              <Label>原因</Label>
-              <Input
-                value={form.reason}
-                onChange={(e) => setForm({ ...form, reason: e.target.value })}
-              />
-            </div>
-          </div>
-          <p className="text-muted-foreground text-xs">
-            修改周期参数只影响未来计算，已产生的记录不受影响。
-          </p>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>
-              取消
-            </Button>
-            <Button onClick={save}>保存</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </Section>
+
+          <Section
+            title="临时停药"
+            action={
+              <Button size="sm" onClick={openCreate}>
+                加一条停药
+              </Button>
+            }
+          >
+            {periods.length === 0 ? (
+              <p className="text-muted-foreground px-4 py-6 text-center text-sm">
+                还没有临时停药条目
+              </p>
+            ) : (
+              periods.map((row) => (
+                <div
+                  key={row.period.id}
+                  className="flex items-center justify-between gap-3 px-4 py-2.5"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{row.targetName}</p>
+                    <p className="text-muted-foreground text-xs tabular-nums">
+                      {describeRange(row.period)}
+                      {row.period.reason ? ` · 原因：${row.period.reason}` : ''}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Button size="sm" variant="outline" onClick={() => openEdit(row.period)}>
+                      编辑
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-destructive"
+                      onClick={() => setDeleting(row)}
+                    >
+                      删除
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </Section>
+        </>
+      ) : null}
+
+      <PausePeriodDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        supplements={supplements}
+        period={editing}
+      />
+
+      {/* W-07：删条目是轻确认，不套用「删补剂」的强度 */}
+      <ConfirmDialog
+        open={deleting !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleting(null)
+        }}
+        strength="light"
+        title="删除这条停药"
+        confirmLabel="删除"
+        description={
+          deleting
+            ? `${deleting.targetName} · ${describeRange(deleting.period)}。删除后这段停用判定不再生效，已有的记录不受影响。`
+            : ''
+        }
+        onConfirm={async () => {
+          if (!deleting) return
+          try {
+            await deletePausePeriod(deleting.period.id)
+          } catch (error) {
+            toast((error as Error).message, { variant: 'destructive' })
+            throw error
+          }
+        }}
+      />
     </div>
   )
 }

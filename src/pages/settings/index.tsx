@@ -1,199 +1,140 @@
-import { useLiveQuery } from 'dexie-react-hooks'
-import { useState } from 'react'
-import RecycleBin from '@/components/recycle/RecycleBin'
+import { useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { DEFAULT_BACKFILL_WINDOW_DAYS, META_KEY } from '@/constants/enums'
-import { db } from '@/db'
-import {
-  EXPORT_TABLES,
-  exportToFile,
-  importData,
-  type ImportStrategy,
-} from '@/services/importService'
-import { metaService } from '@/services/metaService'
-import { metaRepository } from '@/repositories'
+import { Separator } from '@/components/ui/separator'
+import { ConfirmDialog } from '@/components/common/ConfirmDialog'
+import { clearAllData, exportToFile, importFromFile } from '@/services/importExportService'
+import { useDataVersion } from '@/stores/dataVersion'
 import { toast } from '@/stores/toastStore'
+import { formatDate, formatTime } from '@/utils/date'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { metaService } from '@/services/metaService'
+
+/**
+ * 设置页（§8.6）。三个分区，M1 不放任何开关。
+ *
+ * 「上次导出时间」必须常驻显示：这个产品的数据只存在本机，没有第二份，
+ * 导出是唯一的保险；这行时间让「多久没备份了」变得可感知。
+ */
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="bg-card mb-4 rounded-xl border">
+      <header className="border-b px-4 py-2.5 text-sm font-medium">{title}</header>
+      <div className="space-y-3 px-4 py-4">{children}</div>
+    </section>
+  )
+}
 
 export function SettingsPage() {
-  const [strategy, setStrategy] = useState<ImportStrategy>('merge')
-  const [summary, setSummary] = useState<string | null>(null)
-  const [windowDays, setWindowDays] = useState<string>('')
+  const version = useDataVersion((s) => s.version)
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [clearOpen, setClearOpen] = useState(false)
+  const [busy, setBusy] = useState(false)
 
-  const storedWindowDays = useLiveQuery(
-    () => metaService.getBackfillWindowDays(),
-    [],
-    DEFAULT_BACKFILL_WINDOW_DAYS,
-  )
-  const counts = useLiveQuery(
-    async () => {
-      const result: Record<string, number> = {}
-      for (const table of EXPORT_TABLES) {
-        result[table] = await db.table(table).count()
-      }
-      return result
-    },
-    [],
-    {},
-  )
+  const lastExportAt = useLiveQuery(() => metaService.getLastExportAt(), [version], undefined)
 
-  async function handleImport(file: File) {
+  async function handleExport() {
+    setBusy(true)
     try {
-      const text = await file.text()
-      const result = await importData(text, strategy)
-      const parts = [
-        `新增 ${result.added} 条`,
-        `覆盖 ${result.updated} 条`,
-        `保留 ${result.kept} 条`,
-      ]
-      if (result.skipped > 0) parts.push(`跳过 ${result.skipped} 条状态异常记录`)
-      setSummary(parts.join('，'))
-      toast('导入完成（已自动备份当前数据）')
+      await exportToFile()
+      toast('已导出备份')
     } catch (error) {
       toast((error as Error).message, { variant: 'destructive' })
+    } finally {
+      setBusy(false)
     }
   }
 
-  async function clearAll() {
-    if (!window.confirm('将清空全部本地数据（含回收站），且不可恢复。确认继续？')) return
-    await db.delete()
-    await db.open()
-    await metaService.initDefaults()
-    toast('数据已清空')
-  }
-
-  async function saveWindowDays() {
-    const value = Number(windowDays)
-    if (!Number.isInteger(value) || value <= 0) {
-      toast('请输入正整数', { variant: 'destructive' })
-      return
+  async function handleImport(file: File) {
+    setBusy(true)
+    try {
+      const result = await importFromFile(file)
+      const total = Object.values(result.imported).reduce((sum, count) => sum + count, 0)
+      toast(
+        result.issues.length > 0
+          ? `已导入 ${total} 条，跳过 ${result.issues.length} 条不合法的数据`
+          : `已导入 ${total} 条`,
+      )
+    } catch (error) {
+      toast((error as Error).message, { variant: 'destructive' })
+    } finally {
+      setBusy(false)
     }
-    await metaRepository.set(META_KEY.BACKFILL_WINDOW_DAYS, value)
-    toast('已保存')
   }
 
   return (
-    <div className="p-6">
+    <div className="mx-auto w-full max-w-[720px] p-6">
       <h1 className="mb-4 text-xl font-semibold">设置</h1>
 
-      <Tabs defaultValue="data">
-        <TabsList>
-          <TabsTrigger value="data">数据管理</TabsTrigger>
-          <TabsTrigger value="recycle">回收站</TabsTrigger>
-          <TabsTrigger value="defaults">默认设置</TabsTrigger>
-          <TabsTrigger value="about">关于与隐私</TabsTrigger>
-        </TabsList>
+      <Section title="数据">
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={handleExport} disabled={busy}>
+            导出 JSON
+          </Button>
+          <Button variant="outline" onClick={() => fileRef.current?.click()} disabled={busy}>
+            导入 JSON
+          </Button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0]
+              event.target.value = ''
+              if (file) void handleImport(file)
+            }}
+          />
+        </div>
 
-        <TabsContent value="data" className="mt-4 space-y-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm">导出 / 导入</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-3">
-              <div className="flex items-center gap-2">
-                <Button onClick={() => void exportToFile()}>导出 JSON</Button>
-                <span className="text-muted-foreground text-xs">
-                  包含已软删除记录；导入前会自动备份当前数据。
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Input
-                  type="file"
-                  accept="application/json"
-                  className="w-72"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0]
-                    if (file) void handleImport(file)
-                  }}
-                />
-                <Select value={strategy} onValueChange={(v) => setStrategy(v as ImportStrategy)}>
-                  <SelectTrigger className="w-40">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="merge">智能合并</SelectItem>
-                    <SelectItem value="overwrite">覆盖全部</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {summary && <p className="text-sm">{summary}</p>}
-            </CardContent>
-          </Card>
+        <p className="text-muted-foreground text-sm tabular-nums">
+          上次导出：
+          {lastExportAt
+            ? `${formatDate(new Date(lastExportAt))} ${formatTime(lastExportAt)}`
+            : '还没有导出过'}
+        </p>
+        <p className="text-muted-foreground text-xs">
+          导入将清空当前数据并替换为备份内容（导入前会自动备份）
+        </p>
+      </Section>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm">数据统计</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ul className="grid grid-cols-3 gap-2 text-sm">
-                {Object.entries(counts).map(([table, count]) => (
-                  <li key={table} className="flex justify-between border-b py-1">
-                    <span>{table}</span>
-                    <span>{count}</span>
-                  </li>
-                ))}
-              </ul>
-              <Button variant="destructive" className="mt-4" onClick={clearAll}>
-                清除全部数据
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
+      <Section title="危险区">
+        <div className="space-y-1">
+          <Button variant="destructive" onClick={() => setClearOpen(true)} disabled={busy}>
+            清除全部数据
+          </Button>
+          <p className="text-muted-foreground text-xs">需输入「清除」二次确认，且不可恢复</p>
+        </div>
+      </Section>
 
-        <TabsContent value="recycle" className="mt-4">
-          <Card>
-            <CardContent className="pt-4">
-              <RecycleBin />
-            </CardContent>
-          </Card>
-        </TabsContent>
+      <Section title="关于">
+        <p className="text-sm tabular-nums">版本 {import.meta.env.VITE_APP_VERSION ?? '0.2.0'}</p>
+        <Separator />
+        <div className="text-muted-foreground space-y-1 text-xs">
+          <p>全部数据只存在本机浏览器，不上传、不联网、不收集信息</p>
+          <p>本应用是记录工具，不是医疗建议。</p>
+          <p>删除后无法恢复，请定期导出备份。</p>
+        </div>
+      </Section>
 
-        <TabsContent value="defaults" className="mt-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm">补录范围</CardTitle>
-            </CardHeader>
-            <CardContent className="flex items-end gap-2">
-              <div className="flex flex-col gap-1">
-                <Label>可补录的天数（当前 {storedWindowDays} 天）</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  value={windowDays}
-                  placeholder={String(storedWindowDays)}
-                  onChange={(e) => setWindowDays(e.target.value)}
-                />
-              </div>
-              <Button onClick={saveWindowDays}>保存</Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="about" className="mt-4">
-          <Card>
-            <CardContent className="space-y-2 pt-4 text-sm">
-              <p>SupTrack · 纯前端补剂摄入记录工具</p>
-              <p className="text-muted-foreground">
-                所有数据仅存储在你的浏览器本地（IndexedDB），不会上传至任何服务器，也不提供云端同步。
-              </p>
-              <p className="text-muted-foreground">
-                导出的 JSON 含健康摄入记录，属于敏感个人信息，请妥善保管并定期备份。
-              </p>
-              <p className="text-muted-foreground">本应用不使用任何第三方分析或追踪服务。</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      <ConfirmDialog
+        open={clearOpen}
+        onOpenChange={setClearOpen}
+        strength="heavy"
+        confirmText="清除"
+        title="清除全部数据"
+        confirmLabel="清除全部数据"
+        description="这会删掉所有补剂、计划、记录与停药设置，且无法恢复。建议先导出备份。"
+        onConfirm={async () => {
+          try {
+            await clearAllData()
+            toast('已清除全部数据')
+          } catch (error) {
+            toast((error as Error).message, { variant: 'destructive' })
+            throw error
+          }
+        }}
+      />
     </div>
   )
 }

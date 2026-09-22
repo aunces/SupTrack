@@ -1,70 +1,151 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useMemo } from 'react'
 import { TIME_SLOT_VALUES, type TimeSlot } from '@/constants/enums'
-import { getActivePlansForDate } from '@/services/backfillService'
-import { dailyIntakeRepository, pausePeriodRepository, supplementRepository } from '@/repositories'
+import {
+  dailyIntakeRepository,
+  dosagePlanRepository,
+  pausePeriodRepository,
+  pauseSchemeRepository,
+  supplementRepository,
+} from '@/repositories'
 import { useDataVersion } from '@/stores/dataVersion'
-import type { DailyIntake, DosagePlan, PausePeriod, Supplement } from '@/types'
-import { today } from '@/utils/date'
-import { isPaused } from '@/utils/pause'
+import type { DailyIntake, DosagePlan, PausePeriod, PauseScheme, Supplement } from '@/types'
+import { isExpiringSoon, today } from '@/utils/date'
+import { resolveDayItems, type DayItem } from '@/utils/dayState'
+import { isLowStock, isNegativeStock } from '@/utils/stock'
 
-export interface TodayPlanItem {
-  plan: DosagePlan
-  supplement: Supplement | undefined
+/**
+ * 今日页数据（实施指导书 §7.8）。
+ *
+ * 一次性组装清单、分组、统计、预警。
+ * 四态判定全部来自 utils/dayState 的纯函数，hook 只做数据搬运 —— 页面不允许自己判状态。
+ */
+
+export interface TodayGroup {
   timeSlot: TimeSlot
-  paused: boolean
-  pauseReasons: PausePeriod[]
-  record: DailyIntake | undefined
+  items: DayItem[]
+  pendingCount: number
+  takenCount: number
+  /** 今天不用吃（休息 + 停用），不进完成度分母（P4） */
+  offCount: number
+}
+
+export interface TodayWarnings {
+  negative: Supplement[]
+  expiring: Supplement[]
+  lowStock: Supplement[]
 }
 
 export interface TodayData {
   date: string
-  groups: Array<{ timeSlot: TimeSlot; items: TodayPlanItem[] }>
-  supplements: Supplement[]
-  periods: PausePeriod[]
-  records: DailyIntake[]
+  groups: TodayGroup[]
+  /** 计划外记录（手动录入 / 追加一次） */
+  extraItems: DayItem[]
+  summary: { pending: number; taken: number; off: number }
+  /** 顶部停药提醒条（M2 接入 UI，M1 只提供数据） */
+  activeScheme: PauseScheme | null
+  warnings: TodayWarnings
+  /** 补剂总数：空状态要区分「首次使用（一个补剂都没有）」与「全部关闭」（§8.1） */
+  supplementCount: number
+  /** 启用计划数：「全部关闭」的判据是「有补剂但无启用计划」，不是「今天没内容」 */
+  activePlanCount: number
   loading: boolean
+  error: Error | null
 }
 
-export function useTodayData(): TodayData {
-  const version = useDataVersion((s) => s.version)
-  const date = today()
+interface RawData {
+  plans: DosagePlan[]
+  records: DailyIntake[]
+  supplements: Supplement[]
+  periods: PausePeriod[]
+  schemes: PauseScheme[]
+  error: Error | null
+}
 
-  const plans = useLiveQuery(() => getActivePlansForDate(date), [date, version], [])
-  const records = useLiveQuery(() => dailyIntakeRepository.listByDate(date), [date, version], [])
-  const supplements = useLiveQuery(() => supplementRepository.all(), [version], [])
-  const periods = useLiveQuery(() => pausePeriodRepository.all(), [version], [])
+const EMPTY: RawData = {
+  plans: [],
+  records: [],
+  supplements: [],
+  periods: [],
+  schemes: [],
+  error: null,
+}
+
+export function useTodayData(date?: string): TodayData {
+  const version = useDataVersion((s) => s.version)
+  const dateStr = date ?? today()
+
+  const raw = useLiveQuery(
+    async (): Promise<RawData> => {
+      try {
+        const [plans, records, supplements, periods, schemes] = await Promise.all([
+          dosagePlanRepository.listActive(),
+          dailyIntakeRepository.listByDate(dateStr),
+          supplementRepository.all(),
+          pausePeriodRepository.all(),
+          pauseSchemeRepository.all(),
+        ])
+        return { plans, records, supplements, periods, schemes, error: null }
+      } catch (error) {
+        // useLiveQuery 没有错误通道，这里把错误变成数据，页面渲染错误态（§8.7）
+        return { ...EMPTY, error: error as Error }
+      }
+    },
+    [dateStr, version],
+    undefined,
+  )
 
   return useMemo(() => {
-    const supplementMap = new Map((supplements ?? []).map((s) => [s.id, s]))
-    const items: TodayPlanItem[] = (plans ?? []).flatMap((plan) =>
-      plan.timeSlots.map((timeSlot) => {
-        const paused = isPaused(plan.supplementId, date, periods ?? [])
-        return {
-          plan,
-          supplement: supplementMap.get(plan.supplementId),
-          timeSlot,
-          paused: paused.paused,
-          pauseReasons: paused.reasons,
-          record: (records ?? []).find(
-            (r) => r.supplementId === plan.supplementId && r.timeSlot === timeSlot,
-          ),
-        }
-      }),
-    )
+    const data = raw ?? EMPTY
+    const supplementMap = new Map(data.supplements.map((s) => [s.id, s]))
 
-    const groups = TIME_SLOT_VALUES.map((timeSlot) => ({
-      timeSlot,
-      items: items.filter((item) => item.timeSlot === timeSlot),
-    })).filter((group) => group.items.length > 0)
+    const allItems = resolveDayItems({
+      date: dateStr,
+      plans: data.plans,
+      supplements: supplementMap,
+      records: data.records,
+      pauseCtx: { periods: data.periods, schemes: new Map(data.schemes.map((s) => [s.id, s])) },
+    })
+
+    // 计划外记录不进时段分组，单独一块（D-13 / §8.1）
+    const extraItems = allItems.filter((item) => item.planId === '')
+    const planItems = allItems.filter((item) => item.planId !== '')
+
+    const groups: TodayGroup[] = TIME_SLOT_VALUES.map((timeSlot) => {
+      const items = planItems.filter((item) => item.timeSlot === timeSlot)
+      return {
+        timeSlot,
+        items,
+        pendingCount: items.filter((i) => i.state === 'pending').length,
+        takenCount: items.filter((i) => i.state === 'taken').length,
+        offCount: items.filter((i) => i.state === 'rest' || i.state === 'paused').length,
+      }
+    }).filter((group) => group.items.length > 0)
+
+    const summary = {
+      pending: planItems.filter((i) => i.state === 'pending').length,
+      taken: planItems.filter((i) => i.state === 'taken').length,
+      off: planItems.filter((i) => i.state === 'rest' || i.state === 'paused').length,
+    }
+
+    const activePlans = data.plans
+    const warnings: TodayWarnings = {
+      negative: data.supplements.filter(isNegativeStock),
+      expiring: data.supplements.filter((s) => isExpiringSoon(s.expiryDate)),
+      lowStock: data.supplements.filter((s) => isLowStock(s, activePlans)),
+    }
 
     return {
-      date,
+      date: dateStr,
       groups,
-      supplements: supplements ?? [],
-      periods: periods ?? [],
-      records: records ?? [],
-      loading: plans === undefined || supplements === undefined,
+      extraItems,
+      summary,
+      activeScheme: data.schemes.find((scheme) => scheme.isActive) ?? null,
+      warnings,
+      supplementCount: data.supplements.length,
+      activePlanCount: data.plans.length,
+      loading: raw === undefined,
+      error: data.error,
     }
-  }, [date, plans, records, supplements, periods])
+  }, [raw, dateStr])
 }

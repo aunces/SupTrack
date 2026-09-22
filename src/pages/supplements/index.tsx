@@ -1,321 +1,196 @@
-import { useLiveQuery } from 'dexie-react-hooks'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
-  SUPPLEMENT_STATUS_LABEL,
-  SUPPLEMENT_STATUS_VALUES,
-  type SupplementStatus,
-} from '@/constants/enums'
-import { UNIT_TYPE_LABEL, UNIT_TYPE_VALUES, type UnitType } from '@/constants/units'
-import { supplementRepository } from '@/repositories'
-import { useDataVersion } from '@/stores/dataVersion'
-import { toast } from '@/stores/toastStore'
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { EmptyState } from '@/components/common/EmptyState'
+import { LoadingSkeleton } from '@/components/common/LoadingSkeleton'
+import { DeleteSupplementDialog } from '@/components/supplement/DeleteSupplementDialog'
+import { SupplementDialog } from '@/components/supplement/SupplementDialog'
+import { UNIT_TYPE_LABEL } from '@/constants/units'
+import { useSupplementList, type SupplementRow } from '@/hooks/useSupplementList'
 import type { Supplement } from '@/types'
-import { newId, nowIso } from '@/utils/id'
-import { isExpiringSoon } from '@/utils/date'
-import { IngredientLinksDialog } from './IngredientLinksDialog'
-import { StockAdjustDialog } from './StockAdjustDialog'
+import { cn } from 'cn'
 
-function emptyForm() {
-  return {
-    name: '',
-    brand: '',
-    unitType: 'capsule' as UnitType,
-    stockCountInUsageUnit: '',
-    stockUnit: '',
-    unitsPerStock: '',
-    expiryDate: '',
-    status: 'active' as SupplementStatus,
+/**
+ * 补剂页（§8.2）。这一页合并了原「服用计划」页
+ * —— 节奏是计划的属性，但用户心智里它就是「这个补剂怎么吃」。
+ *
+ * 「已关闭」与「今天休息」是两件事，文案不得混用：
+ *   已关闭（isActive=false）：列表里降饱和，**今日页完全不出现**
+ *   节奏休息：只在今日页表现为「今天不用吃」，列表里一切正常
+ */
+
+interface DialogState {
+  supplement: Supplement | null
+  plan: SupplementRow['plan'] | null
+  fixRate: boolean
+}
+
+function StatusBadge({ row }: { row: SupplementRow }) {
+  if (row.configError) {
+    // R-08 的落地：该补剂仍然出现在今日页并判为「该吃」，只在管理页标异常
+    return <Badge className="border-amber-300 bg-amber-50 text-amber-700">配置异常</Badge>
   }
+  if (!row.plan) {
+    return <Badge variant="outline">无计划</Badge>
+  }
+  return row.plan.isActive ? (
+    <Badge variant="secondary">启用</Badge>
+  ) : (
+    <Badge variant="outline">已关闭</Badge>
+  )
+}
+
+function StockCell({ row }: { row: SupplementRow }) {
+  const { supplement, lowStock } = row
+  if (supplement.stockCount == null) return <span className="text-muted-foreground">—</span>
+  return (
+    <span
+      className={cn('tabular-nums', supplement.stockCount < 0 && 'text-destructive font-medium')}
+    >
+      {supplement.stockCount}
+      {lowStock ? '（偏低）' : ''}
+    </span>
+  )
 }
 
 export function SupplementsPage() {
-  const version = useDataVersion((s) => s.version)
-  const rows = useLiveQuery(() => supplementRepository.all(), [version], [])
+  const { rows, loading } = useSupplementList()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [dialog, setDialog] = useState<DialogState | null>(null)
+  const [deleting, setDeleting] = useState<Supplement | null>(null)
 
-  const [editing, setEditing] = useState<Supplement | null>(null)
-  const [form, setForm] = useState(emptyForm())
-  const [open, setOpen] = useState(false)
-  const [linksFor, setLinksFor] = useState<Supplement | null>(null)
-  const [stockFor, setStockFor] = useState<Supplement | null>(null)
+  const highlight = searchParams.get('highlight')
 
-  function startCreate() {
-    setEditing(null)
-    setForm(emptyForm())
-    setOpen(true)
-  }
-
-  function startEdit(row: Supplement) {
-    setEditing(row)
-    setForm({
-      name: row.name,
-      brand: row.brand ?? '',
-      unitType: row.unitType,
-      stockCountInUsageUnit:
-        row.stockCountInUsageUnit == null ? '' : String(row.stockCountInUsageUnit),
-      stockUnit: row.stockUnit ?? '',
-      unitsPerStock: row.unitsPerStock == null ? '' : String(row.unitsPerStock),
-      expiryDate: row.expiryDate ?? '',
-      status: row.status,
-    })
-    setOpen(true)
-  }
-
-  async function save() {
-    const base = {
-      name: form.name.trim(),
-      brand: form.brand.trim() || null,
-      unitType: form.unitType,
-      stockCountInUsageUnit:
-        form.stockCountInUsageUnit === '' ? null : Number(form.stockCountInUsageUnit),
-      stockUnit: form.stockUnit.trim() || null,
-      unitsPerStock: form.unitsPerStock === '' ? null : Number(form.unitsPerStock),
-      expiryDate: form.expiryDate || null,
-      status: form.status,
-    }
-    try {
-      if (editing) {
-        await supplementRepository.update(editing.id, { ...base, updatedAt: nowIso() })
-        toast('已保存')
-      } else {
-        await supplementRepository.create({
-          id: newId(),
-          ...base,
-          description: null,
-          productionDate: null,
-          deletedAt: 0,
-          createdAt: nowIso(),
-          updatedAt: nowIso(),
-        })
-        toast('已创建')
-      }
-      setOpen(false)
-    } catch (error) {
-      toast((error as Error).message, { variant: 'destructive' })
-    }
-  }
-
-  async function remove(row: Supplement) {
-    if (!window.confirm(`删除「${row.name}」会同时停用其服用计划与成分关联，确认删除？`)) return
-    await supplementRepository.softDeleteCascade(row.id)
-    toast('已删除，可在回收站恢复')
-  }
+  // D-12：今日页空状态跳 /supplements?new=1 直接开窗，少一次点击
+  useEffect(() => {
+    if (searchParams.get('new') !== '1') return
+    setDialog({ supplement: null, plan: null, fixRate: false })
+    setSearchParams({}, { replace: true })
+  }, [searchParams, setSearchParams])
 
   return (
-    <div className="p-6">
-      <header className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">补剂库</h1>
-        <Button onClick={startCreate}>新增补剂</Button>
+    <div className="mx-auto w-full max-w-[720px] p-6">
+      <header className="mb-4 flex items-center justify-between gap-4">
+        <h1 className="text-xl font-semibold">补剂</h1>
+        <Button onClick={() => setDialog({ supplement: null, plan: null, fixRate: false })}>
+          新增补剂
+        </Button>
       </header>
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm">共 {rows.length} 项</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {rows.length === 0 ? (
-            <p className="text-muted-foreground py-8 text-center text-sm">
-              还没有补剂，点击右上角新增。
-            </p>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-muted-foreground text-left text-xs">
-                  <th className="py-2">名称</th>
-                  <th>库存</th>
-                  <th>单位</th>
-                  <th>过期</th>
-                  <th>状态</th>
-                  <th className="text-right">操作</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={row.id} className="border-t">
-                    <td className="py-2">{row.name}</td>
-                    <td>
-                      {row.stockCountInUsageUnit == null ? (
-                        <span className="text-muted-foreground">不记录</span>
-                      ) : (
-                        <span
-                          className={
-                            row.stockCountInUsageUnit < 0 ? 'text-destructive font-medium' : ''
-                          }
-                        >
-                          {row.stockCountInUsageUnit}
-                          {row.stockUnit && row.unitsPerStock
-                            ? `（约 ${(row.stockCountInUsageUnit / row.unitsPerStock).toFixed(2)} ${row.stockUnit}）`
-                            : ''}
-                        </span>
-                      )}
-                    </td>
-                    <td>{UNIT_TYPE_LABEL[row.unitType]}</td>
-                    <td>
-                      {row.expiryDate ? (
-                        <span className={isExpiringSoon(row.expiryDate) ? 'text-amber-600' : ''}>
-                          {row.expiryDate}
-                        </span>
-                      ) : (
-                        '-'
-                      )}
-                    </td>
-                    <td>
-                      <Badge variant="secondary">{SUPPLEMENT_STATUS_LABEL[row.status]}</Badge>
-                    </td>
-                    <td className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button size="sm" variant="ghost" onClick={() => setStockFor(row)}>
-                          调库存
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => setLinksFor(row)}>
-                          成分
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => startEdit(row)}>
-                          编辑
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => remove(row)}>
-                          删除
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </CardContent>
-      </Card>
+      {loading ? <LoadingSkeleton lines={4} /> : null}
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editing ? '编辑补剂' : '新增补剂'}</DialogTitle>
-          </DialogHeader>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2 flex flex-col gap-1">
-              <Label>名称</Label>
-              <Input
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <Label>品牌</Label>
-              <Input
-                value={form.brand}
-                onChange={(e) => setForm({ ...form, brand: e.target.value })}
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <Label>服用单位</Label>
-              <Select
-                value={form.unitType}
-                onValueChange={(v) => setForm({ ...form, unitType: v as UnitType })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {UNIT_TYPE_VALUES.map((unit) => (
-                    <SelectItem key={unit} value={unit}>
-                      {UNIT_TYPE_LABEL[unit]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex flex-col gap-1">
-              <Label>库存数量（按服用单位计，可空）</Label>
-              <Input
-                type="number"
-                value={form.stockCountInUsageUnit}
-                onChange={(e) => setForm({ ...form, stockCountInUsageUnit: e.target.value })}
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <Label>过期日期</Label>
-              <Input
-                type="date"
-                value={form.expiryDate}
-                onChange={(e) => setForm({ ...form, expiryDate: e.target.value })}
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <Label>库存展示单位（如 瓶 / 盒 / 袋，可空）</Label>
-              <Input
-                value={form.stockUnit}
-                placeholder="留空则只显示服用单位"
-                onChange={(e) => setForm({ ...form, stockUnit: e.target.value })}
-              />
-            </div>
-            <div className="col-span-2 flex flex-col gap-1">
-              <Label>
-                换算率：1 {form.stockUnit.trim() || '展示单位'} = 多少{' '}
-                {UNIT_TYPE_LABEL[form.unitType]}
-              </Label>
-              <Input
-                type="number"
-                min={1}
-                placeholder="例：1 瓶 = 60 粒，则填 60"
-                value={form.unitsPerStock}
-                onChange={(e) => setForm({ ...form, unitsPerStock: e.target.value })}
-              />
-              <p className="text-muted-foreground text-xs">
-                {form.stockUnit.trim() && form.unitsPerStock && form.stockCountInUsageUnit !== ''
-                  ? `将显示：${form.stockCountInUsageUnit} ${UNIT_TYPE_LABEL[form.unitType]} / 约 ${(
-                      Number(form.stockCountInUsageUnit) / Number(form.unitsPerStock)
-                    ).toFixed(2)} ${form.stockUnit.trim()}`
-                  : '只用于"折合几瓶"的显示，不参与库存扣减；不填展示单位时可留空。'}
-              </p>
-            </div>
-            <div className="flex flex-col gap-1">
-              <Label>状态</Label>
-              <Select
-                value={form.status}
-                onValueChange={(v) => setForm({ ...form, status: v as SupplementStatus })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {SUPPLEMENT_STATUS_VALUES.map((status) => (
-                    <SelectItem key={status} value={status}>
-                      {SUPPLEMENT_STATUS_LABEL[status]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>
-              取消
+      {!loading && rows.length === 0 ? (
+        <EmptyState
+          title="还没有补剂"
+          description="先添加一个补剂，再设置它的服用节奏"
+          action={
+            <Button onClick={() => setDialog({ supplement: null, plan: null, fixRate: false })}>
+              添加补剂
             </Button>
-            <Button onClick={save}>保存</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          }
+        />
+      ) : null}
 
-      <IngredientLinksDialog supplement={linksFor} onClose={() => setLinksFor(null)} />
-      <StockAdjustDialog supplement={stockFor} onClose={() => setStockFor(null)} />
+      {!loading && rows.length > 0 ? (
+        <div className="bg-card rounded-xl border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>名称</TableHead>
+                <TableHead>每次量</TableHead>
+                <TableHead>节奏</TableHead>
+                <TableHead>时段</TableHead>
+                <TableHead>余量</TableHead>
+                <TableHead>状态</TableHead>
+                <TableHead className="text-right">操作</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((row) => (
+                <TableRow
+                  key={row.supplement.id}
+                  className={cn(
+                    row.configError && 'bg-amber-50',
+                    highlight === row.supplement.id && 'ring-2 ring-amber-400',
+                  )}
+                >
+                  <TableCell>
+                    <div className="font-medium">{row.supplement.name}</div>
+                    {row.configError ? (
+                      <div className="text-xs font-medium text-amber-600">配置异常，请修正</div>
+                    ) : null}
+                  </TableCell>
+                  <TableCell className="tabular-nums">
+                    {row.plan?.isActive
+                      ? `${row.plan.amountPerTime} ${UNIT_TYPE_LABEL[row.supplement.unitType]}`
+                      : '—'}
+                  </TableCell>
+                  <TableCell>{row.rateLabel}</TableCell>
+                  <TableCell>{row.timeSlotLabels.join(' + ') || '—'}</TableCell>
+                  <TableCell>
+                    <StockCell row={row} />
+                  </TableCell>
+                  <TableCell>
+                    <StatusBadge row={row} />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          setDialog({
+                            supplement: row.supplement,
+                            plan: row.plan ?? null,
+                            fixRate: row.configError,
+                          })
+                        }
+                      >
+                        {row.configError ? '修正' : '编辑'}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-destructive"
+                        onClick={() => setDeleting(row.supplement)}
+                      >
+                        删除
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      ) : null}
+
+      <SupplementDialog
+        open={dialog !== null}
+        onOpenChange={(open) => {
+          if (!open) setDialog(null)
+        }}
+        supplement={dialog?.supplement ?? null}
+        plan={dialog?.plan ?? null}
+        fixRate={dialog?.fixRate ?? false}
+      />
+
+      <DeleteSupplementDialog
+        open={deleting !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleting(null)
+        }}
+        supplement={deleting}
+      />
     </div>
   )
 }
