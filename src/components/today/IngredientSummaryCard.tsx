@@ -1,26 +1,30 @@
 import { useIngredientSummary } from '@/hooks/useIngredientSummary'
+import { formatShortDate } from '@/utils/date'
+import { cn } from 'cn'
 
 /**
- * 今日摄入成分（§6.6 / T-305）。
+ * 今日摄入成分一览（设计稿首页 ⑧ / §6.6）。
  *
  * ★ 合规红线（R-02）—— 这一屏只允许出现「数字并列」，不允许出现任何判断：
  *   ❌ 禁止：「已超标」「过量」「有害」「建议减少」「已达 XX%」
  *   ❌ 禁止：进度条着色、超限变红、告警图标、健康评分
- *   ✅ 允许：「参考值 800 / 今日 1400 IU」
- *   ✅ 允许：「未设参考值」「来源：A 1000 + B 400」
+ *   ✅ 允许：「1000 IU」+「参考 800 IU」并列
+ *   ✅ 允许：「未设参考值」
  *
- * 所以这块**没有颜色、没有图标、没有条**：连「今日」那个数字都不加粗，
- * 因为加粗也是一种「它更重要 / 它有问题」的暗示。
- * 参考值与上限由用户自己填；填了也只是摆在同一行，工具不替用户下结论。
+ * 大数字（22px）只是排版层级，不是结论 —— 所以它**不带任何颜色**，
+ * 超过参考值也和没超过长得一模一样。
+ *
+ * 口径（用户裁决）：**只累加已打卡的记录**；含量取自该日生效的配方。
+ * 设计稿原文写的是「与实际是否服用无关」，按实施指导书 §6.6 改成下面这句。
  */
 
 export function IngredientSummaryCard({
   date,
-  title = '今日摄入成分',
+  title = '今日摄入成分一览',
   emptyHint = '今日记录的补剂尚未关联成分',
 }: {
   date: string
-  /** 日历页用「当日成分摄入」（§8.4 设计稿的措辞） */
+  /** 日历页用「当日成分摄入」 */
   title?: string
   emptyHint?: string
 }) {
@@ -29,38 +33,42 @@ export function IngredientSummaryCard({
   if (loading) return null
 
   return (
-    <section className="bg-card mb-4 rounded-xl border">
-      <header className="border-b px-4 py-2.5">
+    <section className="rounded-xl border">
+      <header className="flex items-center justify-between gap-3 px-5 py-3">
         <span className="text-sm font-medium">{title}</span>
+        <span className="text-muted-foreground text-xs">按 {formatShortDate(date)} 的配方累加</span>
       </header>
 
-      <div className="divide-y">
-        {totals.length === 0 ? (
-          <p className="text-muted-foreground px-4 py-4 text-xs">{emptyHint}</p>
-        ) : (
-          totals.map((total) => (
-            <div key={total.ingredientId} className="px-4 py-3">
-              <p className="text-sm font-medium">{total.name}</p>
+      <div className="bg-border h-px" />
 
-              {/* 纯数字并列：参考值 + 今日合计。没有「超出 / 达标 / 剩余」这类词 */}
-              <p className="text-muted-foreground mt-0.5 text-xs tabular-nums">
+      {totals.length === 0 ? (
+        <p className="text-muted-foreground px-5 py-4 text-xs">{emptyHint}</p>
+      ) : (
+        <div className="flex gap-5 px-5 py-[18px]">
+          {totals.map((total, index) => (
+            <div
+              key={total.ingredientId}
+              className={cn('flex min-w-0 flex-1 flex-col gap-1.5', index > 0 && 'border-l pl-5')}
+            >
+              <span className="text-muted-foreground truncate text-xs">{total.name}</span>
+              {/* 今日合计：只有数字与单位，没有「超标 / 达标 / 剩余」这类词 */}
+              <span className="text-[22px] leading-[26px] font-semibold tabular-nums">
+                {total.displayValue} {total.displayUnit}
+              </span>
+              <span className="text-muted-foreground text-[11px] leading-[15px] tabular-nums">
                 {total.recommendedDailyIntake == null
                   ? '未设参考值'
-                  : `参考值 ${total.recommendedDailyIntake}`}
-                {' / '}
-                今日 {total.displayValue} {total.displayUnit}
-                {total.upperLimit == null ? '' : `（上限 ${total.upperLimit}）`}
-              </p>
-
-              <p className="text-muted-foreground mt-0.5 text-xs tabular-nums">
-                来源：
-                {total.sources
-                  .map((source) => `${source.supplementName} ${source.amount}`)
-                  .join(' + ')}
-              </p>
+                  : `参考 ${total.recommendedDailyIntake} ${total.unit}`}
+              </span>
             </div>
-          ))
-        )}
+          ))}
+        </div>
+      )}
+
+      <div className="px-5 pt-2.5 pb-3">
+        <p className="text-muted-foreground text-xs">
+          只累加已打卡的记录，按当日生效的配方取数。参考值仅并列对照，高于也不着色、不提示；留空即不比较。
+        </p>
       </div>
     </section>
   )

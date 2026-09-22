@@ -73,8 +73,8 @@
      用重复线性渐变写在 Tailwind 任意值里会嵌套逗号、构建期易被误解析，故单列一个语义类。
      这是状态图形不是装饰，所以不受「不新增独立 CSS」约束 —— 也只加这一个，不要扩用。 */
   .swatch-paused {
-    width: 0.875rem;
-    height: 0.875rem;
+    width: 0.75rem;
+    height: 0.75rem;
     border-radius: 3px;
     background-image: repeating-linear-gradient(
       45deg,

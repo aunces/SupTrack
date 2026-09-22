@@ -78,6 +78,8 @@ export function AppShell() {
   const current = NAV.find((item) =>
     item.end ? location.pathname === item.to : location.pathname.startsWith(item.to),
   )
+  /** 今日页是满宽看板（设计稿 3:1023），其余页面保持 §8 的「内容区 720 居中」 */
+  const wide = location.pathname === '/'
 
   return (
     <div className="flex h-screen">
@@ -134,8 +136,14 @@ export function AppShell() {
         </header>
 
         <main className="min-w-0 flex-1 overflow-y-auto">
-          {/* 断网提示条（§8.7）：不阻塞、不弹窗；在线时整块不占位 */}
-          <div className="mx-auto w-full max-w-[720px] px-6 pt-6 empty:hidden">
+          {/* 断网提示条（§8.7）：不阻塞、不弹窗；在线时整块不占位。
+              左右留白跟随所在页面的内容区：今日页按设计稿是满宽（32），其余页面仍是 720 居中。 */}
+          <div
+            className={cn(
+              'w-full empty:hidden',
+              wide ? 'px-8 pt-8' : 'mx-auto max-w-[720px] px-6 pt-6',
+            )}
+          >
             <OfflineBanner />
           </div>
           <Outlet />
