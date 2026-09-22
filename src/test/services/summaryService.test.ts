@@ -1,11 +1,14 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { summarizeDate } from '@/services/summaryService'
+import { db } from '@/db'
+import { summarizeDate, summarizePlannedDate } from '@/services/summaryService'
 import { exceedsUpperLimit } from '@/utils/summary'
+import { newId, nowIso } from '@/utils/id'
 import {
   resetDb,
   seedIngredient,
   seedIngredientLink,
   seedIntake,
+  seedPlan,
   seedSupplement,
 } from '../helpers/db'
 
@@ -541,5 +544,134 @@ describe('exceedsUpperLimit · 只表达「高于你自配的上限」这一个�
     const total = (await summarizeDate(DATE))[0]
     expect(total.total).toBe(30_000)
     expect(exceedsUpperLimit(total)).toBe(true)
+  })
+})
+
+/**
+ * 每日成分汇总（计划口径，T-305 / 2026-09-22 用户裁决）。
+ *
+ * 关键区别：**不读打卡记录**。summarizePlannedDate 统计的是「今天按启用计划该摄入多少」，
+ * 与 summarizeDate（实际摄入口径）撞名是经过确认的——首页/日历保持实际口径，
+ * 只有成分库新增卡用计划口径。
+ */
+describe('每日成分汇总 · 计划口径（只记录计划数据）', () => {
+  /** 造「计划每天吃 1 粒 D3 → 每份 1000 IU → 今日计划 1000 IU」的最小场景 */
+  async function seedDailyD3() {
+    const supplement = await seedSupplement({ name: '维生素 D3 胶囊' })
+    const d3 = await seedIngredient({ name: '维生素 D3', unit: 'IU', recommendedDailyIntake: 800 })
+    await seedIngredientLink({
+      supplementId: supplement.id,
+      ingredientId: d3.id,
+      amountPerServing: 1000,
+    })
+    await seedPlan(supplement.id)
+    return { supplement, d3 }
+  }
+
+  it('没有启用计划 → 空数组（不读任何打卡记录）', async () => {
+    expect(await summarizePlannedDate(DATE)).toEqual([])
+  })
+
+  it('启用计划 + 配方 → 今日计划 = 每次量 × 时段数 × 配方每份含量', async () => {
+    await seedDailyD3()
+
+    const totals = await summarizePlannedDate(DATE)
+
+    expect(totals).toHaveLength(1)
+    expect(totals[0].name).toBe('维生素 D3')
+    expect(totals[0].total).toBe(1000)
+    expect(totals[0].displayValue).toBe(1000)
+    expect(totals[0].displayUnit).toBe('IU')
+    // 参考摄入量是成分自填的，原样带出（计划口径不改变它）
+    expect(totals[0].recommendedDailyIntake).toBe(800)
+  })
+
+  it('多时段 × 每次量：早+晚各 2 粒、每份 1000 IU → 今日计划 4000 IU', async () => {
+    const supplement = await seedSupplement()
+    const d3 = await seedIngredient({ unit: 'IU' })
+    await seedIngredientLink({
+      supplementId: supplement.id,
+      ingredientId: d3.id,
+      amountPerServing: 1000,
+    })
+    await seedPlan(supplement.id, { amountPerTime: 2, timeSlots: ['morning', 'evening'] })
+
+    const total = (await summarizePlannedDate(DATE))[0]
+    expect(total.total).toBe(4000)
+  })
+
+  it('已打卡**不改变**计划量 —— 计划口径只看计划，不看实际', async () => {
+    const { supplement } = await seedDailyD3()
+    // 今天已经打卡（实际口径会算它，计划口径仍按计划的 1 粒算）
+    await seedIntake({ date: DATE, supplementId: supplement.id, amount: 1, taken: true })
+
+    const total = (await summarizePlannedDate(DATE))[0]
+    expect(total.total).toBe(1000)
+  })
+
+  it('暂停中（区间停药）→ 不计入今日计划', async () => {
+    const { supplement } = await seedDailyD3()
+    const now = nowIso()
+    await db.pausePeriods.add({
+      id: newId(),
+      supplementId: supplement.id,
+      schemeId: null,
+      startDate: DATE,
+      endDate: DATE,
+      reason: '旅行',
+      createdAt: now,
+      updatedAt: now,
+    })
+
+    expect(await summarizePlannedDate(DATE)).toEqual([])
+  })
+
+  it('间隔天节奏：当天是休息日 → 不计入；当天该吃 → 计入', async () => {
+    const { supplement } = await seedDailyD3()
+    // 吃 1 停 1，锚点 = 前一天 → DATE 是休息日
+    await db.dosagePlans.clear()
+    await seedPlan(supplement.id, {
+      rateMode: 'cyclic',
+      rateOnDays: 1,
+      rateOffDays: 1,
+      rateAnchorDate: DAY_BEFORE,
+    })
+
+    expect(await summarizePlannedDate(DATE)).toEqual([])
+
+    // 锚点 = DATE → 当天该吃 → 计入
+    await db.dosagePlans.clear()
+    await seedPlan(supplement.id, {
+      rateMode: 'cyclic',
+      rateOnDays: 1,
+      rateOffDays: 1,
+      rateAnchorDate: DATE,
+    })
+
+    const total = (await summarizePlannedDate(DATE))[0]
+    expect(total.total).toBe(1000)
+  })
+
+  it('计划口径同样遵守「当日有效配方」：改配方后按新配方算', async () => {
+    const supplement = await seedSupplement()
+    const d3 = await seedIngredient({ unit: 'IU' })
+    await seedIngredientLink({
+      supplementId: supplement.id,
+      ingredientId: d3.id,
+      amountPerServing: 1000,
+      effectiveFrom: '2026-09-01',
+      effectiveTo: DAY_BEFORE,
+    })
+    await seedIngredientLink({
+      supplementId: supplement.id,
+      ingredientId: d3.id,
+      amountPerServing: 2000,
+      effectiveFrom: DATE,
+      effectiveTo: null,
+    })
+    await seedPlan(supplement.id)
+
+    const total = (await summarizePlannedDate(DATE))[0]
+    expect(total.total).toBe(2000)
   })
 })

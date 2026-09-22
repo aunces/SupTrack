@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { summarizeDate } from '@/services/summaryService'
+import { summarizeDate, summarizePlannedDate } from '@/services/summaryService'
 import { useDataVersion } from '@/stores/dataVersion'
 import type { IngredientTotal } from '@/utils/summary'
 
@@ -19,6 +19,17 @@ export interface IngredientSummaryData {
 export function useIngredientSummary(date: string): IngredientSummaryData {
   const version = useDataVersion((s) => s.version)
   const totals = useLiveQuery(() => summarizeDate(date), [date, version], undefined)
+
+  return { totals: totals ?? [], loading: totals === undefined }
+}
+
+/**
+ * 每日成分汇总（计划口径，T-305 扩展）。
+ * 只读启用计划与当日配方，**不读打卡记录**；用于成分库页新增的「每日成分汇总」卡。
+ */
+export function usePlannedIngredientSummary(date: string): IngredientSummaryData {
+  const version = useDataVersion((s) => s.version)
+  const totals = useLiveQuery(() => summarizePlannedDate(date), [date, version], undefined)
 
   return { totals: totals ?? [], loading: totals === undefined }
 }

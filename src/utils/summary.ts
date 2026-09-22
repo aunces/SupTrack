@@ -1,5 +1,7 @@
 import type { IngredientUnit } from '@/constants/units'
-import type { DailyIntake, Ingredient, Supplement, SupplementIngredient } from '@/types'
+import type { DailyIntake, DosagePlan, Ingredient, Supplement, SupplementIngredient } from '@/types'
+import { findActivePauses, type PauseContext } from './pause'
+import { matchesRate } from './rate'
 import { isWeightUnit, pickDisplayUnit, toMicrogram } from './unit'
 
 /**
@@ -39,8 +41,9 @@ export interface IngredientTotal {
 }
 
 export interface SummaryInput {
-  /** 该日的记录（函数内部自己按口径 1 过滤，调用方不必先过滤） */
-  records: DailyIntake[]
+  /** 该日的记录（函数内部自己按口径 1 过滤，调用方不必先过滤）。
+   *   只用到 supplementId / amount / taken 三字段，故拓宽类型以便计划口径合成虚拟记录复用。 */
+  records: ReadonlyArray<Pick<DailyIntake, 'supplementId' | 'amount' | 'taken'>>
   ingredients: Map<string, Ingredient>
   supplements: Map<string, Supplement>
   /** 该日每条记录的补剂 → 当时有效的配方关联（口径 2 由调用方按 date 查好后传入） */
@@ -168,4 +171,56 @@ export function exceedsUpperLimit(total: IngredientTotal): boolean {
     ? toMicrogram(total.upperLimit, total.unit)
     : total.upperLimit
   return total.total > limit
+}
+
+// ── 每日成分汇总（计划口径）────────────────────────────────────────
+
+export interface PlannedSummaryInput {
+  /** 计算日（成分库页为今天） */
+  date: string
+  /** 全部启用计划（该日是否该吃由排程引擎判定） */
+  plans: DosagePlan[]
+  ingredients: Map<string, Ingredient>
+  supplements: Map<string, Supplement>
+  pauseCtx: PauseContext
+  /** 该日每条补剂 → 当时有效的配方关联（调用方按 date 查好后传入，口径与 summarizeDate 一致） */
+  linksBySupplement: Map<string, SupplementIngredient[]>
+}
+
+/**
+ * 每日成分汇总（2026-09-22 用户裁决：**只记录计划数据**）。
+ *
+ * 与 utils/summary 上方的「实际摄入口径」不同，这里**不读打卡记录**：
+ * 只统计「今天按启用计划该摄入」的补剂（`matchesRate` 该吃 且 `findActivePauses` 未停用，
+ * 今天休息 / 停用 / 节奏起点未到的补剂不计入），再把「每日应服补剂量」合成虚拟记录
+ * 喂给 computeIngredientTotals，使重量归一 / 单位聚合 / 来源明细 / 展示单位
+ * 与既有实现共用一份代码。
+ */
+export function computePlannedIngredientTotals(input: PlannedSummaryInput): IngredientTotal[] {
+  const { date, plans, ingredients, supplements, pauseCtx, linksBySupplement } = input
+
+  // 今天「按计划该摄入」= 匹配节奏 且 未被暂停。**独立于打卡状态**：
+  // 已经打卡 / 计划外服用都不会改变计划量 —— 计划口径只看计划，不看实际。
+  const dailyAmountBySupplement = new Map<string, number>()
+  for (const plan of plans) {
+    const scheduled =
+      matchesRate(plan, date) && findActivePauses(plan.supplementId, date, pauseCtx).length === 0
+    if (!scheduled) continue
+    dailyAmountBySupplement.set(
+      plan.supplementId,
+      (dailyAmountBySupplement.get(plan.supplementId) ?? 0) +
+        plan.amountPerTime * plan.timeSlots.length,
+    )
+  }
+
+  const syntheticRecords: Array<Pick<DailyIntake, 'supplementId' | 'amount' | 'taken'>> = [
+    ...dailyAmountBySupplement.entries(),
+  ].map(([supplementId, amount]) => ({ supplementId, amount, taken: true }))
+
+  return computeIngredientTotals({
+    records: syntheticRecords,
+    ingredients,
+    supplements,
+    linksBySupplement,
+  })
 }

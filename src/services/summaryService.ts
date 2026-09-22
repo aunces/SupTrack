@@ -1,11 +1,18 @@
 import {
   dailyIntakeRepository,
+  dosagePlanRepository,
   ingredientRepository,
+  pausePeriodRepository,
+  pauseSchemeRepository,
   supplementIngredientRepository,
   supplementRepository,
 } from '@/repositories'
 import type { SupplementIngredient } from '@/types'
-import { computeIngredientTotals, type IngredientTotal } from '@/utils/summary'
+import {
+  computeIngredientTotals,
+  computePlannedIngredientTotals,
+  type IngredientTotal,
+} from '@/utils/summary'
 
 /**
  * 成分汇总用例（实施指导书 §6.6 / T-302）。
@@ -47,6 +54,45 @@ export async function summarizeDate(date: string): Promise<IngredientTotal[]> {
     records,
     ingredients: new Map(ingredients.map((item) => [item.id, item])),
     supplements: new Map(supplements.map((item) => [item.id, item])),
+    linksBySupplement,
+  })
+}
+
+/**
+ * 每日成分汇总（计划口径，2026-09-22）。
+ *
+ * 只取材：取「启用计划 + 当日配方」，判定与累加全交给 utils/summary 的纯函数。
+ * **不读打卡记录** —— 与 summarizeDate（实际口径）的区别就在这里：
+ * 这里统计的是「今天按计划该摄入多少」，而非「今天实际吃了多少」。
+ */
+export async function summarizePlannedDate(date: string): Promise<IngredientTotal[]> {
+  const plans = await dosagePlanRepository.listActive()
+  if (plans.length === 0) return []
+
+  const [ingredients, supplements, periods, schemes] = await Promise.all([
+    ingredientRepository.all(),
+    supplementRepository.all(),
+    pausePeriodRepository.all(),
+    pauseSchemeRepository.all(),
+  ])
+
+  const supplementIds = [...new Set(plans.map((plan) => plan.supplementId))]
+  const linksBySupplement = new Map<string, SupplementIngredient[]>()
+  await Promise.all(
+    supplementIds.map(async (supplementId) => {
+      linksBySupplement.set(
+        supplementId,
+        await supplementIngredientRepository.effectiveAt(supplementId, date),
+      )
+    }),
+  )
+
+  return computePlannedIngredientTotals({
+    date,
+    plans,
+    ingredients: new Map(ingredients.map((item) => [item.id, item])),
+    supplements: new Map(supplements.map((item) => [item.id, item])),
+    pauseCtx: { periods, schemes: new Map(schemes.map((item) => [item.id, item])) },
     linksBySupplement,
   })
 }
