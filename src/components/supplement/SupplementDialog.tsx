@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { TIME_SLOT_LABEL, TIME_SLOT_VALUES, type TimeSlot } from '@/constants/enums'
 import { UNIT_TYPE_LABEL, UNIT_TYPE_VALUES, type UnitType } from '@/constants/units'
 import { RATE_PRESETS, type RateParams } from '@/utils/rate'
@@ -206,199 +207,220 @@ export function SupplementDialog({
           <DialogDescription>补剂与它的服用节奏一起保存。</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="supplement-name">名称 *</Label>
-            <Input
-              id="supplement-name"
-              value={form.name}
-              onChange={(event) => update('name', event.target.value)}
-            />
-            {errors.name ? <p className="text-destructive text-xs">{errors.name}</p> : null}
-          </div>
+        {/* 三个 Tab 只重排 JSX，state / handler / 校验 / 保存逻辑一概不动（§8.2） */}
+        <Tabs defaultValue="basic">
+          <TabsList className="w-full">
+            <TabsTrigger value="basic">基本信息</TabsTrigger>
+            <TabsTrigger value="plan">服用计划</TabsTrigger>
+            <TabsTrigger value="ingredient">成分</TabsTrigger>
+          </TabsList>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="supplement-unit">单位 *</Label>
-              <Select
-                value={form.unitType}
-                onValueChange={(value) => update('unitType', value as UnitType)}
-              >
-                <SelectTrigger id="supplement-unit" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {UNIT_TYPE_VALUES.map((unit) => (
-                    <SelectItem key={unit} value={unit}>
-                      {UNIT_TYPE_LABEL[unit]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="supplement-amount">每次服用量 *</Label>
-              <Input
-                id="supplement-amount"
-                type="number"
-                min={1}
-                step={1}
-                value={form.amountPerTime}
-                onChange={(event) => update('amountPerTime', event.target.value)}
-              />
-              {errors.amountPerTime ? (
-                <p className="text-destructive text-xs">{errors.amountPerTime}</p>
-              ) : null}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="supplement-stock">余量（可留空）</Label>
-            <Input
-              id="supplement-stock"
-              type="number"
-              step={1}
-              value={form.stockCount}
-              onChange={(event) => update('stockCount', event.target.value)}
-            />
-            <p className="text-muted-foreground text-xs">留空 = 不记录余量</p>
-          </div>
-
-          <div className="space-y-2">
-            <Label>服用时段 *</Label>
-            <ToggleGroup
-              type="multiple"
-              className="flex-wrap"
-              value={form.timeSlots}
-              onValueChange={(value) => update('timeSlots', value as TimeSlot[])}
-            >
-              {TIME_SLOT_VALUES.map((slot) => (
-                <ToggleGroupItem key={slot} value={slot}>
-                  {TIME_SLOT_LABEL[slot]}
-                </ToggleGroupItem>
-              ))}
-            </ToggleGroup>
-            <p className="text-muted-foreground text-xs">一天吃两次就选两个时段，不要建两条计划</p>
-            {errors.timeSlots ? (
-              <p className="text-destructive text-xs">{errors.timeSlots}</p>
-            ) : null}
-          </div>
-
-          <div className="space-y-2">
-            <Label>服用节奏 *</Label>
-            {fixRate ? (
-              <p className="text-xs font-medium text-amber-600">配置异常，请补齐节奏参数</p>
-            ) : null}
-            <ToggleGroup
-              type="single"
-              className="flex-wrap"
-              value={form.rateKey}
-              onValueChange={(value) => {
-                if (value) update('rateKey', value)
-              }}
-            >
-              {RATE_PRESETS.map((preset) => (
-                <ToggleGroupItem key={preset.key} value={preset.key}>
-                  {preset.label}
-                </ToggleGroupItem>
-              ))}
-            </ToggleGroup>
-
-            {form.rateKey === 'everyN' ? (
-              <div className="flex items-center gap-2 text-sm">
-                <span>每</span>
-                <Input
-                  className="w-20"
-                  type="number"
-                  min={2}
-                  step={1}
-                  value={form.everyN}
-                  onChange={(event) => update('everyN', event.target.value)}
-                />
-                <span>天</span>
-              </div>
-            ) : null}
-
-            {form.rateKey === 'onOff' ? (
-              <div className="flex items-center gap-2 text-sm">
-                <span>吃</span>
-                <Input
-                  className="w-20"
-                  type="number"
-                  min={1}
-                  step={1}
-                  value={form.onDays}
-                  onChange={(event) => update('onDays', event.target.value)}
-                />
-                <span>天，停</span>
-                <Input
-                  className="w-20"
-                  type="number"
-                  min={1}
-                  step={1}
-                  value={form.offDays}
-                  onChange={(event) => update('offDays', event.target.value)}
-                />
-                <span>天</span>
-              </div>
-            ) : null}
-
-            {isCyclic ? (
+          <TabsContent value="basic">
+            <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="supplement-anchor" className="text-xs">
-                  起点 *
-                </Label>
+                <Label htmlFor="supplement-name">名称 *</Label>
                 <Input
-                  id="supplement-anchor"
-                  type="date"
-                  value={form.anchorDate}
-                  onChange={(event) => update('anchorDate', event.target.value)}
+                  id="supplement-name"
+                  value={form.name}
+                  onChange={(event) => update('name', event.target.value)}
                 />
-                <p className="text-muted-foreground text-xs">起点之前该补剂不出现，不报错</p>
+                {errors.name ? <p className="text-destructive text-xs">{errors.name}</p> : null}
               </div>
-            ) : null}
 
-            {errors.rate ? <p className="text-destructive text-xs">{errors.rate}</p> : null}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="supplement-unit">单位 *</Label>
+                  <Select
+                    value={form.unitType}
+                    onValueChange={(value) => update('unitType', value as UnitType)}
+                  >
+                    <SelectTrigger id="supplement-unit" className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {UNIT_TYPE_VALUES.map((unit) => (
+                        <SelectItem key={unit} value={unit}>
+                          {UNIT_TYPE_LABEL[unit]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-            {/* 与停药页的分工必须在这里说清，否则用户一定会在两处都配一遍（D-44） */}
-            <p className="text-muted-foreground text-xs">
-              这里是「按规划怎么吃」，今日页显示「今天不用吃」。从健康角度的疗程间歇（如吃 21 天停 7
-              天）请到<strong className="font-medium">停药页</strong>
-              按方案组配置 —— 那里显示「停用中」，可带原因、可一次覆盖多种补剂。
-            </p>
-          </div>
+                <div className="space-y-2">
+                  <Label htmlFor="supplement-amount">每次服用量 *</Label>
+                  <Input
+                    id="supplement-amount"
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={form.amountPerTime}
+                    onChange={(event) => update('amountPerTime', event.target.value)}
+                  />
+                  {errors.amountPerTime ? (
+                    <p className="text-destructive text-xs">{errors.amountPerTime}</p>
+                  ) : null}
+                </div>
+              </div>
 
-          {/* §8.5：配方变更写在补剂编辑区内，不单独开页面 */}
-          <IngredientLinksSection supplementId={supplement?.id ?? null} />
+              <div className="space-y-2">
+                <Label htmlFor="supplement-stock">余量（可留空）</Label>
+                <Input
+                  id="supplement-stock"
+                  type="number"
+                  step={1}
+                  value={form.stockCount}
+                  onChange={(event) => update('stockCount', event.target.value)}
+                />
+                <p className="text-muted-foreground text-xs">留空 = 不记录余量</p>
+              </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="supplement-expiry">过期日（可留空）</Label>
-            <Input
-              id="supplement-expiry"
-              type="date"
-              value={form.expiryDate}
-              onChange={(event) => update('expiryDate', event.target.value)}
-            />
-          </div>
+              <div className="space-y-2">
+                <Label htmlFor="supplement-expiry">过期日（可留空）</Label>
+                <Input
+                  id="supplement-expiry"
+                  type="date"
+                  value={form.expiryDate}
+                  onChange={(event) => update('expiryDate', event.target.value)}
+                />
+              </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="supplement-notes">备注（可留空）</Label>
-            <Input
-              id="supplement-notes"
-              value={form.notes}
-              onChange={(event) => update('notes', event.target.value)}
-            />
-          </div>
+              <div className="space-y-2">
+                <Label htmlFor="supplement-notes">备注（可留空）</Label>
+                <Input
+                  id="supplement-notes"
+                  value={form.notes}
+                  onChange={(event) => update('notes', event.target.value)}
+                />
+              </div>
+            </div>
+          </TabsContent>
 
-          <label className="flex items-center gap-2 text-sm">
-            <Checkbox
-              checked={form.isActive}
-              onCheckedChange={(checked) => update('isActive', checked === true)}
-            />
-            启用这个计划
-          </label>
-        </div>
+          <TabsContent value="plan">
+            <div className="space-y-4">
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  checked={form.isActive}
+                  onCheckedChange={(checked) => update('isActive', checked === true)}
+                />
+                启用这个计划
+              </label>
+
+              <div className="space-y-2">
+                <Label>服用时段 *</Label>
+                <ToggleGroup
+                  type="multiple"
+                  className="flex-wrap"
+                  value={form.timeSlots}
+                  onValueChange={(value) => update('timeSlots', value as TimeSlot[])}
+                >
+                  {TIME_SLOT_VALUES.map((slot) => (
+                    <ToggleGroupItem key={slot} value={slot}>
+                      {TIME_SLOT_LABEL[slot]}
+                    </ToggleGroupItem>
+                  ))}
+                </ToggleGroup>
+                <p className="text-muted-foreground text-xs">
+                  一天吃两次就选两个时段，不要建两条计划
+                </p>
+                {errors.timeSlots ? (
+                  <p className="text-destructive text-xs">{errors.timeSlots}</p>
+                ) : null}
+              </div>
+
+              <div className="space-y-2">
+                <Label>服用节奏 *</Label>
+                {fixRate ? (
+                  <p className="text-xs font-medium text-amber-600">配置异常，请补齐节奏参数</p>
+                ) : null}
+                <ToggleGroup
+                  type="single"
+                  className="flex-wrap"
+                  value={form.rateKey}
+                  onValueChange={(value) => {
+                    if (value) update('rateKey', value)
+                  }}
+                >
+                  {RATE_PRESETS.map((preset) => (
+                    <ToggleGroupItem key={preset.key} value={preset.key}>
+                      {preset.label}
+                    </ToggleGroupItem>
+                  ))}
+                </ToggleGroup>
+
+                {form.rateKey === 'everyN' ? (
+                  <div className="flex items-center gap-2 text-sm">
+                    <span>每</span>
+                    <Input
+                      className="w-20"
+                      type="number"
+                      min={2}
+                      step={1}
+                      value={form.everyN}
+                      onChange={(event) => update('everyN', event.target.value)}
+                    />
+                    <span>天</span>
+                  </div>
+                ) : null}
+
+                {form.rateKey === 'onOff' ? (
+                  <div className="flex items-center gap-2 text-sm">
+                    <span>吃</span>
+                    <Input
+                      className="w-20"
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={form.onDays}
+                      onChange={(event) => update('onDays', event.target.value)}
+                    />
+                    <span>天，停</span>
+                    <Input
+                      className="w-20"
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={form.offDays}
+                      onChange={(event) => update('offDays', event.target.value)}
+                    />
+                    <span>天</span>
+                  </div>
+                ) : null}
+
+                {isCyclic ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="supplement-anchor" className="text-xs">
+                      起点 *
+                    </Label>
+                    <Input
+                      id="supplement-anchor"
+                      type="date"
+                      value={form.anchorDate}
+                      onChange={(event) => update('anchorDate', event.target.value)}
+                    />
+                    <p className="text-muted-foreground text-xs">起点之前该补剂不出现，不报错</p>
+                  </div>
+                ) : null}
+
+                {errors.rate ? <p className="text-destructive text-xs">{errors.rate}</p> : null}
+
+                {/* 与停药页的分工必须在这里说清，否则用户一定会在两处都配一遍（D-44） */}
+                <p className="text-muted-foreground text-xs">
+                  这里是「按规划怎么吃」，今日页显示「今天不用吃」。从健康角度的疗程间歇（如吃 21
+                  天停 7 天）请到<strong className="font-medium">停药页</strong>
+                  按方案组配置 —— 那里显示「停用中」，可带原因、可一次覆盖多种补剂。
+                </p>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="ingredient">
+            <div className="space-y-4">
+              {/* §8.5：配方变更写在补剂编辑区内，不单独开页面 */}
+              <IngredientLinksSection supplementId={supplement?.id ?? null} />
+            </div>
+          </TabsContent>
+        </Tabs>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>

@@ -143,6 +143,31 @@ export async function deactivatePlan(planId: string): Promise<void> {
   publishDataChange()
 }
 
+/**
+ * 列表内切换某个计划的启用 / 关闭（§7.2 列表切换）。
+ *
+ * OFF 直接置 isActive=false；ON 走 savePlanForSupplement 重建同一条计划，
+ * **完整保留** amountPerTime / timeSlots / rateMode / rateOnDays / rateOffDays /
+ * rateAnchorDate / notes —— 只改 isActive，其余参数原样带过。
+ * 可逆、无副作用，供补剂列表的状态列调用，无需弹确认框。
+ */
+export async function setPlanActive(plan: DosagePlan, isActive: boolean): Promise<void> {
+  if (!isActive) {
+    await deactivatePlan(plan.id)
+    return
+  }
+  await savePlanForSupplement(plan.supplementId, {
+    amountPerTime: plan.amountPerTime,
+    timeSlots: plan.timeSlots,
+    rateMode: plan.rateMode,
+    rateOnDays: plan.rateOnDays,
+    rateOffDays: plan.rateOffDays,
+    rateAnchorDate: plan.rateAnchorDate,
+    isActive: true,
+    notes: plan.notes,
+  })
+}
+
 /** 删除计划条目（硬删除） */
 export async function deletePlan(planId: string): Promise<void> {
   await db.dosagePlans.delete(planId)

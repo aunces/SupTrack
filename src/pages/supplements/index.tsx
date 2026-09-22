@@ -14,8 +14,11 @@ import { EmptyState } from '@/components/common/EmptyState'
 import { LoadingSkeleton } from '@/components/common/LoadingSkeleton'
 import { DeleteSupplementDialog } from '@/components/supplement/DeleteSupplementDialog'
 import { SupplementDialog } from '@/components/supplement/SupplementDialog'
+import { Switch } from '@/components/ui/switch'
 import { UNIT_TYPE_LABEL } from '@/constants/units'
 import { useSupplementList, type SupplementRow } from '@/hooks/useSupplementList'
+import { setPlanActive } from '@/services/planService'
+import { toast } from '@/stores/toastStore'
 import type { Supplement } from '@/types'
 import { cn } from 'cn'
 
@@ -34,7 +37,16 @@ interface DialogState {
   fixRate: boolean
 }
 
-function StatusBadge({ row }: { row: SupplementRow }) {
+function StatusBadge({
+  row,
+  disabled,
+  onToggle,
+}: {
+  row: SupplementRow
+  disabled: boolean
+  /** 仅对有计划且非配置异常的行触发切换 */
+  onToggle: (row: SupplementRow) => void
+}) {
   if (row.configError) {
     // R-08 的落地：该补剂仍然出现在今日页并判为「该吃」，只在管理页标异常
     return <Badge className="border-amber-300 bg-amber-50 text-amber-700">配置异常</Badge>
@@ -42,10 +54,23 @@ function StatusBadge({ row }: { row: SupplementRow }) {
   if (!row.plan) {
     return <Badge variant="outline">无计划</Badge>
   }
-  return row.plan.isActive ? (
-    <Badge variant="secondary">启用</Badge>
-  ) : (
-    <Badge variant="outline">已关闭</Badge>
+  const active = row.plan.isActive
+  return (
+    <div className="flex items-center gap-2">
+      <Switch
+        checked={active}
+        disabled={disabled}
+        aria-label={
+          active ? `关闭 ${row.supplement.name} 的计划` : `启用 ${row.supplement.name} 的计划`
+        }
+        onCheckedChange={() => onToggle(row)}
+      />
+      <span
+        className={cn('text-xs tabular-nums', active ? 'text-foreground' : 'text-muted-foreground')}
+      >
+        {active ? '启用' : '已关闭'}
+      </span>
+    </div>
   )
 }
 
@@ -67,8 +92,22 @@ export function SupplementsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [dialog, setDialog] = useState<DialogState | null>(null)
   const [deleting, setDeleting] = useState<Supplement | null>(null)
+  const [togglingId, setTogglingId] = useState<string | null>(null)
 
   const highlight = searchParams.get('highlight')
+
+  /** 状态列切换启用 / 关闭：可逆、无副作用，失败 toast（§7.2 列表切换） */
+  async function handleToggle(row: SupplementRow) {
+    if (!row.plan || togglingId) return
+    setTogglingId(row.supplement.id)
+    try {
+      await setPlanActive(row.plan, !row.plan.isActive)
+    } catch (error) {
+      toast((error as Error).message, { variant: 'destructive' })
+    } finally {
+      setTogglingId(null)
+    }
+  }
 
   // D-12：今日页空状态跳 /supplements?new=1 直接开窗，少一次点击
   useEffect(() => {
@@ -140,7 +179,7 @@ export function SupplementsPage() {
                     <StockCell row={row} />
                   </TableCell>
                   <TableCell>
-                    <StatusBadge row={row} />
+                    <StatusBadge row={row} disabled={togglingId != null} onToggle={handleToggle} />
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
