@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { BackfillDialog } from '@/components/backfill/BackfillDialog'
 import { StateLine, StateSwatch } from '@/components/common/ItemStateView'
 import { LoadingSkeleton } from '@/components/common/LoadingSkeleton'
+import { IngredientSummaryCard } from '@/components/today/IngredientSummaryCard'
 import { Button } from '@/components/ui/button'
 import { UNIT_TYPE_LABEL } from '@/constants/units'
 import { useCalendarMonth } from '@/hooks/useCalendarMonth'
@@ -312,6 +313,14 @@ export function CalendarPage() {
               />
             </footer>
           </div>
+
+          {/* 当日成分摄入（§8.4 设计稿）。放在日历上不只是「回看数字」——
+              它是「漏服不计入汇总」这条口径唯一能被用户看见的地方（走查第 21 步）。 */}
+          <IngredientSummaryCard
+            date={selected}
+            title="当日成分摄入"
+            emptyHint="这天记录的补剂尚未关联成分"
+          />
         </aside>
       </div>
 

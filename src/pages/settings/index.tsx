@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { clearAllData, exportToFile, importFromFile } from '@/services/importExportService'
+import { tableCounts } from '@/services/statsService'
 import { useDataVersion } from '@/stores/dataVersion'
 import { toast } from '@/stores/toastStore'
 import { formatDate, formatTime } from '@/utils/date'
@@ -32,6 +33,7 @@ export function SettingsPage() {
   const [busy, setBusy] = useState(false)
 
   const lastExportAt = useLiveQuery(() => metaService.getLastExportAt(), [version], undefined)
+  const counts = useLiveQuery(() => tableCounts(), [version], undefined)
 
   async function handleExport() {
     setBusy(true)
@@ -96,6 +98,17 @@ export function SettingsPage() {
         <p className="text-muted-foreground text-xs">
           导入将清空当前数据并替换为备份内容（导入前会自动备份）
         </p>
+
+        {/* T-308：数据统计。只报数量，不做图表、趋势、达成率（§8.2 最低优先级） */}
+        {counts ? (
+          <div className="text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 border-t pt-3 text-xs tabular-nums">
+            {counts.map((row) => (
+              <span key={row.label}>
+                {row.label} {row.count}
+              </span>
+            ))}
+          </div>
+        ) : null}
       </Section>
 
       <Section title="危险区">

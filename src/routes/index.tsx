@@ -1,17 +1,18 @@
 import type { RouteObject } from 'react-router-dom'
 import AppShell from '@/components/layout/AppShell'
 import CalendarPage from '@/pages/calendar'
+import IngredientsPage from '@/pages/ingredients'
 import PausePeriodsPage from '@/pages/pausePeriods'
 import SettingsPage from '@/pages/settings'
 import SupplementsPage from '@/pages/supplements'
 import TodayPage from '@/pages/today'
 
 /**
- * 路由（§8.3 / T-122 / T-211）。
+ * 路由（§8.3 / T-122 / T-211 / T-309）。
  *
  * M1：今日 / 补剂 / 停药 / 设置（4 项）
  * M2：+ 日历，插在设置之前（5 项）
- * M3：+ 成分库（6 项）
+ * M3：+ 成分库，插在设置之前（6 项）
  * 已移除 /plans（功能并入补剂页）。任何阶段导航都不允许有「点不进去的死链」。
  */
 const routes: RouteObject[] = [
@@ -23,6 +24,7 @@ const routes: RouteObject[] = [
       { path: 'supplements', element: <SupplementsPage /> },
       { path: 'pause-periods', element: <PausePeriodsPage /> },
       { path: 'calendar', element: <CalendarPage /> },
+      { path: 'ingredients', element: <IngredientsPage /> },
       { path: 'settings', element: <SettingsPage /> },
     ],
   },

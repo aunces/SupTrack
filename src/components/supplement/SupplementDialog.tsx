@@ -22,6 +22,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { TIME_SLOT_LABEL, TIME_SLOT_VALUES, type TimeSlot } from '@/constants/enums'
 import { UNIT_TYPE_LABEL, UNIT_TYPE_VALUES, type UnitType } from '@/constants/units'
 import { RATE_PRESETS, type RateParams } from '@/utils/rate'
+import { IngredientLinksSection } from './IngredientLinksSection'
 import { createSupplement, updateSupplement } from '@/services/supplementService'
 import { savePlanForSupplement } from '@/services/planService'
 import { toast } from '@/stores/toastStore'
@@ -360,6 +361,9 @@ export function SupplementDialog({
 
             {errors.rate ? <p className="text-destructive text-xs">{errors.rate}</p> : null}
           </div>
+
+          {/* §8.5：配方变更写在补剂编辑区内，不单独开页面 */}
+          <IngredientLinksSection supplementId={supplement?.id ?? null} />
 
           <div className="space-y-2">
             <Label htmlFor="supplement-expiry">过期日（可留空）</Label>

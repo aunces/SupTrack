@@ -1,6 +1,6 @@
 import { db } from '@/db'
 import { metaService } from '@/services/metaService'
-import type { DailyIntake, DosagePlan, Supplement } from '@/types'
+import type { DailyIntake, DosagePlan, Ingredient, Supplement, SupplementIngredient } from '@/types'
 import { newId, nowIso } from '@/utils/id'
 
 /**
@@ -91,4 +91,50 @@ export async function seedIntake(overrides: Partial<DailyIntake> = {}): Promise<
 
 export async function getStock(supplementId: string): Promise<number | null | undefined> {
   return (await db.supplements.get(supplementId))?.stockCount
+}
+
+// ── M3：成分与配方关联 ─────────────────────────────────────────
+
+export function ingredientFixture(overrides: Partial<Ingredient> = {}): Ingredient {
+  const now = nowIso()
+  return {
+    id: newId(),
+    name: '维生素 D3',
+    unit: 'IU',
+    recommendedDailyIntake: null,
+    upperLimit: null,
+    notes: null,
+    createdAt: now,
+    updatedAt: now,
+    ...overrides,
+  }
+}
+
+export function linkFixture(overrides: Partial<SupplementIngredient> = {}): SupplementIngredient {
+  const now = nowIso()
+  return {
+    id: newId(),
+    supplementId: 'supp-1',
+    ingredientId: 'ing-1',
+    amountPerServing: 1000,
+    effectiveFrom: '2026-09-01',
+    effectiveTo: null,
+    createdAt: now,
+    updatedAt: now,
+    ...overrides,
+  }
+}
+
+export async function seedIngredient(overrides: Partial<Ingredient> = {}): Promise<Ingredient> {
+  const record = ingredientFixture(overrides)
+  await db.ingredients.add(record)
+  return record
+}
+
+export async function seedIngredientLink(
+  overrides: Partial<SupplementIngredient> = {},
+): Promise<SupplementIngredient> {
+  const record = linkFixture(overrides)
+  await db.supplementIngredients.add(record)
+  return record
 }

@@ -25,6 +25,7 @@ const NAV = [
   { to: '/supplements', label: '补剂', end: false },
   { to: '/pause-periods', label: '停药', end: false },
   { to: '/calendar', label: '日历', end: false },
+  { to: '/ingredients', label: '成分库', end: false },
   { to: '/settings', label: '设置', end: false },
 ] as const
 

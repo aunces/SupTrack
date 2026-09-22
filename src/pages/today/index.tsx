@@ -4,7 +4,9 @@ import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/common/EmptyState'
 import { ErrorState } from '@/components/common/ErrorState'
 import { LoadingSkeleton } from '@/components/common/LoadingSkeleton'
+import { BackupRemindBanner } from '@/components/today/BackupRemindBanner'
 import { DayListItem } from '@/components/today/DayListItem'
+import { IngredientSummaryCard } from '@/components/today/IngredientSummaryCard'
 import { ManualIntakeDialog } from '@/components/today/ManualIntakeDialog'
 import { PauseSchemeBanner } from '@/components/today/PauseSchemeBanner'
 import {
@@ -216,6 +218,9 @@ export function TodayPage() {
         <PauseSchemeBanner scheme={activeScheme} entryCount={activeSchemeEntryCount} />
       ) : null}
 
+      {/* 备份提醒（T-307）：数据只在本机，多久没备份必须能被看见 */}
+      {!error ? <BackupRemindBanner /> : null}
+
       {error ? (
         <ErrorState
           className="mb-4"
@@ -262,6 +267,10 @@ export function TodayPage() {
         : null}
 
       {!error && !loading && extraItems.length > 0 ? <ExtraRecords items={extraItems} /> : null}
+
+      {/* 成分汇总是**回顾**，放在最后：这一屏的首要任务是「今天吃什么」。
+          M3（T-305）：只有数字并列，没有颜色 / 图标 / 结论（R-02）。 */}
+      {!error && !loading ? <IngredientSummaryCard date={date} /> : null}
 
       <ManualIntakeDialog open={manualOpen} onOpenChange={setManualOpen} />
     </div>
