@@ -5,10 +5,16 @@ import { EmptyState } from '@/components/common/EmptyState'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { LoadingSkeleton } from '@/components/common/LoadingSkeleton'
 import { PausePeriodDialog } from '@/components/pause/PausePeriodDialog'
-import { usePauseData, type PausePeriodRow } from '@/hooks/usePauseData'
-import { deletePausePeriod } from '@/services/pauseService'
+import { PauseSchemeDialog } from '@/components/pause/PauseSchemeDialog'
+import { usePauseData, type PausePeriodRow, type PauseSchemeRow } from '@/hooks/usePauseData'
+import {
+  activateScheme,
+  deletePausePeriod,
+  deleteScheme,
+  stopScheme,
+} from '@/services/pauseService'
 import { toast } from '@/stores/toastStore'
-import { formatShortDate } from '@/utils/date'
+import { formatShortDate, today } from '@/utils/date'
 import type { PausePeriod } from '@/types'
 
 /**
@@ -17,7 +23,10 @@ import type { PausePeriod } from '@/types'
  * 两个分区并列，不藏进 Tab —— 它们对应两种真实用法：
  *   方案组 = 成套情景，一键切换（M2）
  *   临时停药 = 随手加一条，轻量高频（M1）
- * M1 就把「方案组」分区的骨架渲染出来，避免 M2 再改一次信息架构。
+ *
+ * 「同一时刻至多一组执行中」由 pauseService.activateScheme 在事务里保证；
+ * 界面这一层负责的是 W-04 的**轻确认**：执行新组之前告诉用户会结束哪一组。
+ * 不弹这个确认，用户会以为两组同时在生效。
  */
 
 function Section({
@@ -48,20 +57,84 @@ function describeRange(period: PausePeriod): string {
   return `${start} → ${formatShortDate(period.endDate)}`
 }
 
+/** 「覆盖 3 项 · 9/18 起 · 未设结束日」 */
+function describeScheme(row: PauseSchemeRow): string {
+  const parts = [`覆盖 ${row.entryCount} 项`]
+  if (row.scheme.isActive) {
+    if (row.scheme.activatedAt) parts.push(`${formatShortDate(row.scheme.activatedAt)} 起`)
+    parts.push(row.scheme.endedAt ? '已停止' : '未设结束日')
+  } else if (row.scheme.endedAt) {
+    parts.push('已停止')
+  } else {
+    parts.push('未执行')
+  }
+  return parts.join(' · ')
+}
+
 export function PausePeriodsPage() {
   const { schemes, periods, supplements, loading } = usePauseData()
+
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<PausePeriod | null>(null)
   const [deleting, setDeleting] = useState<PausePeriodRow | null>(null)
 
-  function openCreate() {
+  const [schemeDialogOpen, setSchemeDialogOpen] = useState(false)
+  const [editingScheme, setEditingScheme] = useState<PauseSchemeRow | null>(null)
+  /** 待执行但还没确认的方案组（W-04 轻确认） */
+  const [activating, setActivating] = useState<PauseSchemeRow | null>(null)
+  const [deletingScheme, setDeletingScheme] = useState<PauseSchemeRow | null>(null)
+
+  const activeScheme = schemes.find((row) => row.scheme.isActive) ?? null
+
+  function openCreatePeriod() {
     setEditing(null)
     setDialogOpen(true)
   }
 
-  function openEdit(period: PausePeriod) {
+  function openEditPeriod(period: PausePeriod) {
     setEditing(period)
     setDialogOpen(true)
+  }
+
+  function openCreateScheme() {
+    setEditingScheme(null)
+    setSchemeDialogOpen(true)
+  }
+
+  function openEditScheme(row: PauseSchemeRow) {
+    setEditingScheme(row)
+    setSchemeDialogOpen(true)
+  }
+
+  /** 没有执行中的组就直接执行；有则先问一句（W-04） */
+  function requestActivate(row: PauseSchemeRow) {
+    if (activeScheme && activeScheme.scheme.id !== row.scheme.id) {
+      setActivating(row)
+      return
+    }
+    void runActivate(row)
+  }
+
+  async function runActivate(row: PauseSchemeRow) {
+    try {
+      const { endedScheme } = await activateScheme(row.scheme.id, today())
+      toast(
+        endedScheme
+          ? `已执行「${row.scheme.name}」，并结束了「${endedScheme.name}」`
+          : `已执行「${row.scheme.name}」`,
+      )
+    } catch (error) {
+      toast((error as Error).message, { variant: 'destructive' })
+    }
+  }
+
+  async function runStop(row: PauseSchemeRow) {
+    try {
+      await stopScheme(row.scheme.id, today())
+      toast(`已停止「${row.scheme.name}」`)
+    } catch (error) {
+      toast((error as Error).message, { variant: 'destructive' })
+    }
   }
 
   return (
@@ -72,7 +145,14 @@ export function PausePeriodsPage() {
 
       {!loading ? (
         <>
-          <Section title="停药方案组">
+          <Section
+            title="停药方案组"
+            action={
+              <Button size="sm" onClick={openCreateScheme}>
+                新建方案组
+              </Button>
+            }
+          >
             {schemes.length === 0 ? (
               <EmptyState
                 className="border-0"
@@ -80,24 +160,45 @@ export function PausePeriodsPage() {
                 description="一套情景可以同时停多种补剂，需要时一键切换"
               />
             ) : (
-              schemes.map(({ scheme, entryCount }) => (
+              schemes.map((row) => (
                 <div
-                  key={scheme.id}
+                  key={row.scheme.id}
                   className="flex items-center justify-between gap-3 px-4 py-2.5"
                 >
                   <div className="min-w-0">
                     <p className="flex items-center gap-2 text-sm font-medium">
-                      <span className={scheme.isActive ? 'text-violet-500' : 'text-slate-400'}>
-                        {scheme.isActive ? '●' : '○'}
+                      <span className={row.scheme.isActive ? 'text-violet-500' : 'text-slate-400'}>
+                        {row.scheme.isActive ? '●' : '○'}
                       </span>
-                      {scheme.name}
-                      {scheme.isActive ? <Badge variant="secondary">执行中</Badge> : null}
+                      <span className="truncate">{row.scheme.name}</span>
+                      {row.scheme.isActive ? <Badge variant="secondary">执行中</Badge> : null}
                     </p>
                     <p className="text-muted-foreground text-xs tabular-nums">
-                      覆盖 {entryCount} 项
-                      {scheme.activatedAt ? ` · ${formatShortDate(scheme.activatedAt)} 起` : ''}
-                      {scheme.endedAt ? ' · 已停止' : ''}
+                      {describeScheme(row)}
+                      {row.scheme.note ? ` · ${row.scheme.note}` : ''}
                     </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    {row.scheme.isActive ? (
+                      <Button size="sm" variant="outline" onClick={() => void runStop(row)}>
+                        停止
+                      </Button>
+                    ) : (
+                      <Button size="sm" onClick={() => requestActivate(row)}>
+                        执行
+                      </Button>
+                    )}
+                    <Button size="sm" variant="outline" onClick={() => openEditScheme(row)}>
+                      编辑
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-destructive"
+                      onClick={() => setDeletingScheme(row)}
+                    >
+                      删除
+                    </Button>
                   </div>
                 </div>
               ))
@@ -107,7 +208,7 @@ export function PausePeriodsPage() {
           <Section
             title="临时停药"
             action={
-              <Button size="sm" onClick={openCreate}>
+              <Button size="sm" onClick={openCreatePeriod}>
                 加一条停药
               </Button>
             }
@@ -130,7 +231,7 @@ export function PausePeriodsPage() {
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
-                    <Button size="sm" variant="outline" onClick={() => openEdit(row.period)}>
+                    <Button size="sm" variant="outline" onClick={() => openEditPeriod(row.period)}>
                       编辑
                     </Button>
                     <Button
@@ -156,6 +257,14 @@ export function PausePeriodsPage() {
         period={editing}
       />
 
+      <PauseSchemeDialog
+        open={schemeDialogOpen}
+        onOpenChange={setSchemeDialogOpen}
+        supplements={supplements}
+        scheme={editingScheme?.scheme ?? null}
+        entries={editingScheme?.entries}
+      />
+
       {/* W-07：删条目是轻确认，不套用「删补剂」的强度 */}
       <ConfirmDialog
         open={deleting !== null}
@@ -174,6 +283,50 @@ export function PausePeriodsPage() {
           if (!deleting) return
           try {
             await deletePausePeriod(deleting.period.id)
+          } catch (error) {
+            toast((error as Error).message, { variant: 'destructive' })
+            throw error
+          }
+        }}
+      />
+
+      {/* W-04：执行新组会结束旧组，必须说清楚是哪一组 */}
+      <ConfirmDialog
+        open={activating !== null}
+        onOpenChange={(open) => {
+          if (!open) setActivating(null)
+        }}
+        strength="light"
+        title="执行这个方案组"
+        confirmLabel="执行"
+        description={
+          activating && activeScheme
+            ? `执行「${activating.scheme.name}」将结束当前执行中的「${activeScheme.scheme.name}」，确认？`
+            : ''
+        }
+        onConfirm={async () => {
+          if (!activating) return
+          await runActivate(activating)
+        }}
+      />
+
+      <ConfirmDialog
+        open={deletingScheme !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeletingScheme(null)
+        }}
+        strength="light"
+        title="删除这个方案组"
+        confirmLabel="删除"
+        description={
+          deletingScheme
+            ? `「${deletingScheme.scheme.name}」及其 ${deletingScheme.entryCount} 项条目会一起删除。已有的记录不受影响。`
+            : ''
+        }
+        onConfirm={async () => {
+          if (!deletingScheme) return
+          try {
+            await deleteScheme(deletingScheme.scheme.id)
           } catch (error) {
             toast((error as Error).message, { variant: 'destructive' })
             throw error

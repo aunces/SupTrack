@@ -6,6 +6,8 @@ import { DailyIntakeCreateSchema, DailyIntakeUpdateSchema } from '@/schemas/dail
 import type { DailyIntake } from '@/types'
 import { publishDataChange } from '@/utils/broadcast'
 import { nowIso } from '@/utils/id'
+import { buildIntake } from '@/utils/intakeFactory'
+import { applyStockDelta } from './stockAdjust'
 
 /**
  * 记录用例（实施指导书 §7.3）★ 打卡 5 秒闭环的写入口。
@@ -37,30 +39,9 @@ export class DuplicateIntakeError extends Error {
   }
 }
 
+/** 本模块只写「已服用」；标漏服走 backfillService（§7.5） */
 function buildRecord(input: CheckInInput): DailyIntake {
-  return dailyIntakeRepository.build({
-    date: input.date,
-    supplementId: input.supplementId,
-    planId: input.planId,
-    timeSlot: input.timeSlot,
-    amount: input.amount,
-    // 本模块只写「已服用」；标漏服走 backfillService（§7.5）
-    taken: true,
-    isExtra: input.origin !== INTAKE_ORIGIN.CHECKIN,
-    origin: input.origin,
-    notes: null,
-  })
-}
-
-/** 余量联动：null 表示不记录余量，直接跳过 */
-async function applyStockDelta(supplementId: string, delta: number): Promise<void> {
-  if (delta === 0) return
-  const supplement = await db.supplements.get(supplementId)
-  if (!supplement || supplement.stockCount == null) return
-  await db.supplements.update(supplementId, {
-    stockCount: supplement.stockCount + delta,
-    updatedAt: nowIso(),
-  })
+  return buildIntake({ ...input, taken: true, notes: null })
 }
 
 /**

@@ -17,13 +17,14 @@ import { cn } from 'cn'
  * 窄屏（< 860px）：侧栏收为顶部下拉，内容区占满宽度。
  * 不做底部 Tab、不做触摸手势、不做 44px 热区（R-03）。
  *
- * M1 只有 4 项导航；日历在 M2、成分库在 M3 加入。
+ * M1 = 4 项，M2 加「日历」，M3 加「成分库」。
  */
 
 const NAV = [
   { to: '/', label: '今日', end: true },
   { to: '/supplements', label: '补剂', end: false },
   { to: '/pause-periods', label: '停药', end: false },
+  { to: '/calendar', label: '日历', end: false },
   { to: '/settings', label: '设置', end: false },
 ] as const
 

@@ -11,6 +11,8 @@ import type { PausePeriod, PauseScheme, Supplement } from '@/types'
 
 export interface PauseSchemeRow {
   scheme: PauseScheme
+  /** 该方案组的条目（编辑 Dialog 要用它们回填「跟随方案 / 独立起止」） */
+  entries: PausePeriod[]
   /** 覆盖几项条目（列表展示「覆盖 3 项」） */
   entryCount: number
 }
@@ -50,10 +52,10 @@ export function usePauseData(): PauseData {
 
     const supplementMap = new Map(raw.supplements.map((s) => [s.id, s]))
 
-    const schemes: PauseSchemeRow[] = raw.schemes.map((scheme) => ({
-      scheme,
-      entryCount: raw.periods.filter((period) => period.schemeId === scheme.id).length,
-    }))
+    const schemes: PauseSchemeRow[] = raw.schemes.map((scheme) => {
+      const entries = raw.periods.filter((period) => period.schemeId === scheme.id)
+      return { scheme, entries, entryCount: entries.length }
+    })
 
     const periods: PausePeriodRow[] = raw.periods
       .filter((period) => period.schemeId == null)

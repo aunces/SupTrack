@@ -44,6 +44,8 @@ export interface TodayData {
   summary: { pending: number; taken: number; off: number }
   /** 顶部停药提醒条（M2 接入 UI，M1 只提供数据） */
   activeScheme: PauseScheme | null
+  /** 执行中的方案组覆盖几项（提醒条显示「（N 项）」） */
+  activeSchemeEntryCount: number
   warnings: TodayWarnings
   /** 补剂总数：空状态要区分「首次使用（一个补剂都没有）」与「全部关闭」（§8.1） */
   supplementCount: number
@@ -135,12 +137,17 @@ export function useTodayData(date?: string): TodayData {
       lowStock: data.supplements.filter((s) => isLowStock(s, activePlans)),
     }
 
+    const activeScheme = data.schemes.find((scheme) => scheme.isActive) ?? null
+
     return {
       date: dateStr,
       groups,
       extraItems,
       summary,
-      activeScheme: data.schemes.find((scheme) => scheme.isActive) ?? null,
+      activeScheme,
+      activeSchemeEntryCount: activeScheme
+        ? data.periods.filter((period) => period.schemeId === activeScheme.id).length
+        : 0,
       warnings,
       supplementCount: data.supplements.length,
       activePlanCount: data.plans.length,

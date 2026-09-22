@@ -151,11 +151,9 @@ export async function deleteScheme(id: string): Promise<void> {
   publishDataChange()
 }
 
-/** 「停止」是立即失效：结束日记成 date 的前一天，当天就恢复正常 */
-function endDateForStop(activatedAt: string | null, date: string): string {
-  const end = addDays(date, -1)
-  // 当天创建当天停止：退化为结束日 = 执行日，保证闭区间合法
-  return activatedAt != null && end < activatedAt ? activatedAt : end
+/** 「停止」是立即失效：结束日记成 date 的前一天，当天就恢复正常（§8.3） */
+function endDateForStop(date: string): string {
+  return addDays(date, -1)
 }
 
 /**
@@ -174,9 +172,15 @@ export async function activateScheme(
 
     const current = await pauseSchemeRepository.getActiveScheme()
     if (current && current.id !== id) {
-      const endedAt = endDateForStop(current.activatedAt, date)
-      await db.pauseSchemes.update(current.id, { isActive: false, endedAt, updatedAt: nowIso() })
-      endedScheme = { ...current, isActive: false, endedAt }
+      // 旧组若也是今天才执行的，净效果为零 → 退回「未执行」（理由同 stopScheme）。
+      // 顺带避开一个 schema 陷阱：endedAt 记成「执行日前一天」会违反
+      // PauseSchemeUpdateSchema 的「结束日期不能早于执行日期」。
+      const patch =
+        current.activatedAt == null || current.activatedAt === date
+          ? { isActive: false, activatedAt: null, endedAt: null, updatedAt: nowIso() }
+          : { isActive: false, endedAt: endDateForStop(date), updatedAt: nowIso() }
+      await db.pauseSchemes.update(current.id, patch)
+      endedScheme = { ...current, ...patch }
     }
 
     await db.pauseSchemes.update(id, {
@@ -191,13 +195,31 @@ export async function activateScheme(
   return { endedScheme }
 }
 
-/** 停止方案组：条目立即失效，历史记录不变 */
+/**
+ * 停止方案组：条目立即失效，历史记录不变。
+ *
+ * ★ 当天执行、当天停止 → **退回「未执行」**，而不是记成 endedAt = 执行日。
+ *   后者会让闭区间覆盖今天：用户明明按了「停止」，今日页却还写着「停用中」。
+ *   这段方案从没完整生效过一天，净效果为零，「未执行」才是实话 ——
+ *   而且它还能被原样再次执行，不用重填一遍。
+ */
 export async function stopScheme(id: string, date: string): Promise<void> {
   const scheme = await db.pauseSchemes.get(id)
   if (!scheme) throw new Error('方案组不存在')
+
+  if (scheme.activatedAt == null || scheme.activatedAt === date) {
+    await pauseSchemeRepository.update(id, {
+      isActive: false,
+      activatedAt: null,
+      endedAt: null,
+    })
+    publishDataChange()
+    return
+  }
+
   await pauseSchemeRepository.update(id, {
     isActive: false,
-    endedAt: endDateForStop(scheme.activatedAt, date),
+    endedAt: endDateForStop(date),
   })
   publishDataChange()
 }

@@ -1,5 +1,5 @@
-import { Check } from 'lucide-react'
 import { type ReactNode, useState } from 'react'
+import { StateLine, StateSwatch } from '@/components/common/ItemStateView'
 import { Button } from '@/components/ui/button'
 import { UNIT_TYPE_LABEL } from '@/constants/units'
 import {
@@ -9,16 +9,14 @@ import {
   undoIntake,
 } from '@/services/intakeService'
 import { toast } from '@/stores/toastStore'
-import { formatShortDate, formatTime } from '@/utils/date'
 import type { DayItem, ItemState } from '@/utils/dayState'
 import { cn } from 'cn'
 
 /**
  * 今日页单行（§8.1）。
  *
- * 四态必须**同时用三个维度**区分：颜色 + 图形 + 文案。
- * 图形是四种不同的**形状**（实心点 / 对勾圆 / 虚线圆 / 斜纹方块）而不是同一个圆换颜色 ——
- * 色盲、灰度打印、缩放场景下，形状是唯一还活着的区分通道。
+ * 四态图形与文案在 components/common/ItemStateView（日历详情共用同一份）。
+ * 本组件只负责「这一行有什么操作」——打卡 / 撤销 / 追加一次 / 仍要服用。
  */
 
 /** 行底色（极淡）：待服用保持白（它是待办，最需要被看见） */
@@ -27,81 +25,6 @@ const ROW_CLASS: Record<ItemState, string> = {
   taken: 'bg-emerald-50/60',
   rest: 'bg-slate-50',
   paused: 'bg-violet-50',
-}
-
-function StateSwatch({ state }: { state: ItemState }) {
-  if (state === 'pending') {
-    return <span className="size-2.5 rounded-full bg-amber-500" aria-hidden />
-  }
-  if (state === 'taken') {
-    return (
-      <span className="grid size-4 place-items-center rounded-full bg-emerald-500" aria-hidden>
-        <Check className="size-3 text-white" strokeWidth={3} />
-      </span>
-    )
-  }
-  if (state === 'rest') {
-    return (
-      <span
-        className="size-3.5 rounded-full border-[1.5px] border-dashed border-slate-400"
-        aria-hidden
-      />
-    )
-  }
-  return <span className="swatch-paused" aria-hidden />
-}
-
-/** 状态文案。P1：「休息」与「停用」是两个不同的词；P2：不吃项必须给出下一个该吃的日期 */
-function StateLine({ item, unit }: { item: DayItem; unit: string }) {
-  if (item.state === 'pending') {
-    return (
-      <>
-        待服用 {item.amountDue} {unit}
-      </>
-    )
-  }
-
-  if (item.state === 'taken') {
-    const extras: ReactNode[] = []
-    if (item.lastTakenAt) extras.push(formatTime(item.lastTakenAt))
-    // 休息日 / 停用期仍要服用时，必须标来源，否则用户会以为自己记错了
-    if (item.pause) extras.push('停用期服用')
-    else if (item.offScheduleTake) extras.push('休息日服用')
-    return (
-      <>
-        已服用 {item.takenAmount} {unit}
-        {extras.length > 0 ? ` · ${extras.join(' · ')}` : ''}
-      </>
-    )
-  }
-
-  if (item.state === 'rest') {
-    return (
-      <>
-        今天不用吃
-        {item.nextRateDate ? (
-          <>
-            {' · '}
-            <span className="text-foreground font-medium">
-              下次 {formatShortDate(item.nextRateDate)}
-            </span>
-          </>
-        ) : null}
-      </>
-    )
-  }
-
-  const resume = item.pause?.resumeDate
-  return (
-    <>
-      停用中
-      {item.pause ? ` · ${item.pause.reasonLabel}` : ''}
-      {' · '}
-      <span className="text-foreground font-medium">
-        {resume ? `${formatShortDate(resume)} 恢复` : '持续中'}
-      </span>
-    </>
-  )
 }
 
 function amountLabel(item: DayItem, lowStock: boolean): ReactNode {

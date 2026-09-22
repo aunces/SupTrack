@@ -6,6 +6,7 @@ import { ErrorState } from '@/components/common/ErrorState'
 import { LoadingSkeleton } from '@/components/common/LoadingSkeleton'
 import { DayListItem } from '@/components/today/DayListItem'
 import { ManualIntakeDialog } from '@/components/today/ManualIntakeDialog'
+import { PauseSchemeBanner } from '@/components/today/PauseSchemeBanner'
 import {
   DENSE_COLLAPSE_THRESHOLD,
   INTAKE_ORIGIN,
@@ -184,6 +185,8 @@ export function TodayPage() {
     warnings,
     supplementCount,
     activePlanCount,
+    activeScheme,
+    activeSchemeEntryCount,
     loading,
     error,
   } = useTodayData()
@@ -206,6 +209,12 @@ export function TodayPage() {
           手动录入
         </Button>
       </header>
+
+      {/* 执行中的停药方案组：一次覆盖多项，用户需要知道「今天为什么少了一半」。
+          临时停药不在这里出现 —— 它已经在对应补剂行上显示「停用中」了。 */}
+      {!error && activeScheme ? (
+        <PauseSchemeBanner scheme={activeScheme} entryCount={activeSchemeEntryCount} />
+      ) : null}
 
       {error ? (
         <ErrorState
