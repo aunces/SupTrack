@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { DailyIntake, DosagePlan, PausePeriod, Supplement } from '@/types'
+import type { DailyIntake, DosagePlan, PausePeriod, PauseScheme, Supplement } from '@/types'
 import { resolveDayItems, resolveDayStatus, type DayItem } from '@/utils/dayState'
 import type { PauseContext } from '@/utils/pause'
 
@@ -287,6 +287,86 @@ describe('resolveDayItems · 判定优先级', () => {
     })
     expect(items).toHaveLength(1)
     expect(items[0].planId).toBe('')
+  })
+})
+
+/**
+ * 周期方案的守门测试（D-44）。
+ *
+ * 端到端验证两件事 —— 这就是本次改动的全部风险所在：
+ *   ① 停用段里，补剂要变成 paused
+ *   ② **吃段里，补剂必须回到节奏判定**，绝不能因为「有个周期方案在执行」
+ *      就把每一天都标成停用。v11.1 的旧 bug 正是这一条：用户自己设的常规节奏
+ *      被系统渲染成「停药中」，那也是 v12 把周期从停药条目挪到计划的原因。
+ */
+describe('周期方案（D-44）· 吃段让位给节奏', () => {
+  function cyclicScheme(overrides: Partial<PauseScheme> = {}): PauseScheme {
+    return {
+      id: 'scheme-1',
+      name: '21/7 疗程',
+      note: null,
+      isActive: true,
+      // 9/1–9/21 吃、9/22–9/28 停、9/29 起下一轮
+      activatedAt: '2026-09-01',
+      endedAt: null,
+      cycleMode: 'cyclic',
+      cycleOnDays: 21,
+      cycleOffDays: 7,
+      createdAt: '2026-09-01T00:00:00.000Z',
+      updatedAt: '2026-09-01T00:00:00.000Z',
+      ...overrides,
+    }
+  }
+
+  /** 跟随方案组的条目（startDate 为空）—— 周期只作用于这种条目 */
+  const followsScheme: PausePeriod = {
+    id: 'period-1',
+    schemeId: 'scheme-1',
+    supplementId: 'supp-1',
+    startDate: null,
+    endDate: null,
+    reason: null,
+    createdAt: '2026-09-01T00:00:00.000Z',
+    updatedAt: '2026-09-01T00:00:00.000Z',
+  }
+
+  function ctxWith(scheme: PauseScheme): PauseContext {
+    return { periods: [followsScheme], schemes: new Map([[scheme.id, scheme]]) }
+  }
+
+  it('停用段（9/22）→ paused，恢复日 = 下一个吃段首日 9/29', () => {
+    const [item] = run({ date: '2026-09-22', pause: ctxWith(cyclicScheme()) })
+    expect(item.state).toBe('paused')
+    expect(item.pause?.reasonLabel).toBe('21/7 疗程')
+    expect(item.pause?.resumeDate).toBe('2026-09-29')
+  })
+
+  it('★ 吃段（9/20）+ 计划「每天」→ pending，不是 paused', () => {
+    const [item] = run({ date: '2026-09-20', pause: ctxWith(cyclicScheme()) })
+    expect(item.state).toBe('pending')
+    expect(item.pause).toBeNull()
+  })
+
+  it('★ 吃段 + 计划「隔天」→ 该吃日 pending、休息日 rest（都不是 paused）', () => {
+    const everyOther = plan({
+      rateMode: 'cyclic',
+      rateOnDays: 1,
+      rateOffDays: 1,
+      rateAnchorDate: '2026-09-20',
+    })
+    const pause = ctxWith(cyclicScheme())
+    expect(run({ date: '2026-09-20', plans: [everyOther], pause })[0].state).toBe('pending')
+    expect(run({ date: '2026-09-21', plans: [everyOther], pause })[0].state).toBe('rest')
+  })
+
+  it('停用段 + 有记录 → taken 且标「停用期服用」（记录优先于周期停用）', () => {
+    const [item] = run({
+      date: '2026-09-22',
+      pause: ctxWith(cyclicScheme()),
+      records: [record({ date: '2026-09-22', origin: 'forced', isExtra: true })],
+    })
+    expect(item.state).toBe('taken')
+    expect(item.offScheduleTake).toBe(true)
   })
 })
 

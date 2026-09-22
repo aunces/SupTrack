@@ -298,3 +298,105 @@ describe('「跟随方案」与「独立起止」的区别（全篇最容易混�
     expect(isPausedOn(own.id, '2026-09-20', ctx)).toBe(false)
   })
 })
+
+/**
+ * 周期方案（D-44）：写库 → 执行 → 判定 的整条路径。
+ *
+ * 边界算术已经在 utils/pause.test.ts 里钉过了，这里只验两件容易写歪的事：
+ *   ① 周期参数有没有**真的存下来**（而不是被 schema 的 default 冲成连续）
+ *   ② **执行日有没有真的当成周期第 1 天**（复用 activatedAt 的落地效果）
+ */
+describe('周期方案（D-44）· 端到端', () => {
+  const ANCHOR = '2026-09-01'
+  const cyclicDraft = (name: string, supplementId: string): PauseSchemeDraft => ({
+    ...draft(name, supplementId),
+    cycleMode: 'cyclic',
+    cycleOnDays: 21,
+    cycleOffDays: 7,
+  })
+
+  it('createScheme 存下周期参数；未执行时不产生任何停用', async () => {
+    const supplement = await seedSupplement()
+    const scheme = await createScheme(cyclicDraft('21/7 疗程', supplement.id))
+
+    expect(scheme.cycleMode).toBe('cyclic')
+    expect(scheme.cycleOnDays).toBe(21)
+    expect(scheme.cycleOffDays).toBe(7)
+
+    const ctx = await loadPauseContext()
+    expect(isPausedOn(supplement.id, '2026-09-22', ctx)).toBe(false)
+  })
+
+  it('执行日 = 周期第 1 天：9/21 不停用、9/22 停用、恢复日 9/29', async () => {
+    const supplement = await seedSupplement()
+    const scheme = await createScheme(cyclicDraft('21/7 疗程', supplement.id))
+    await activateScheme(scheme.id, ANCHOR)
+
+    const ctx = await loadPauseContext()
+    expect(isPausedOn(supplement.id, '2026-09-20', ctx)).toBe(false) // 第 20 天
+    expect(isPausedOn(supplement.id, '2026-09-21', ctx)).toBe(false) // 第 21 天
+    expect(isPausedOn(supplement.id, '2026-09-22', ctx)).toBe(true) // 第 22 天
+
+    const pauses = findActivePauses(supplement.id, '2026-09-22', ctx)
+    expect(pauses).toHaveLength(1)
+    expect(pauses[0].reasonLabel).toBe('21/7 疗程')
+    expect(pauses[0].resumeDate).toBe('2026-09-29')
+  })
+
+  it('停止方案组后周期立即失效', async () => {
+    const supplement = await seedSupplement()
+    const scheme = await createScheme(cyclicDraft('21/7 疗程', supplement.id))
+    await activateScheme(scheme.id, ANCHOR)
+    await stopScheme(scheme.id, '2026-09-22')
+
+    const ctx = await loadPauseContext()
+    expect(isPausedOn(supplement.id, '2026-09-22', ctx)).toBe(false)
+    expect(isPausedOn(supplement.id, '2026-09-23', ctx)).toBe(false)
+  })
+
+  it('updateScheme 能在「连续」与「周期」之间来回改', async () => {
+    const supplement = await seedSupplement()
+    const scheme = await createScheme(draft('情景', supplement.id))
+    expect(scheme.cycleMode).toBe('continuous')
+    expect(scheme.cycleOnDays).toBeNull()
+
+    await updateScheme(scheme.id, {
+      ...cyclicDraft('情景', supplement.id),
+      cycleOnDays: 5,
+      cycleOffDays: 2,
+    })
+    const cyclic = await db.pauseSchemes.get(scheme.id)
+    expect(cyclic?.cycleMode).toBe('cyclic')
+    expect(cyclic?.cycleOnDays).toBe(5)
+
+    await updateScheme(scheme.id, {
+      name: '情景',
+      note: null,
+      cycleMode: 'continuous',
+      cycleOnDays: null,
+      cycleOffDays: null,
+      entries: [{ supplementId: supplement.id, startDate: null, endDate: null, reason: null }],
+    })
+    const back = await db.pauseSchemes.get(scheme.id)
+    expect(back?.cycleMode).toBe('continuous')
+    expect(back?.cycleOnDays).toBeNull()
+
+    // 改回连续后：从执行日起一直停用，不再有「吃段」
+    await activateScheme(scheme.id, ANCHOR)
+    const ctx = await loadPauseContext()
+    expect(isPausedOn(supplement.id, '2026-09-22', ctx)).toBe(true)
+  })
+
+  it('周期参数非法 → 被 Zod 拦下，写不进库', async () => {
+    const supplement = await seedSupplement()
+    await expect(
+      createScheme({
+        ...draft('坏周期', supplement.id),
+        cycleMode: 'cyclic',
+        cycleOnDays: 21,
+        cycleOffDays: null,
+      }),
+    ).rejects.toThrow('周期方案必须填写「吃几天 / 停几天」')
+    expect(await db.pauseSchemes.count()).toBe(0)
+  })
+})

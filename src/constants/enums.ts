@@ -35,6 +35,31 @@ export type RateMode = (typeof RATE_MODE)[keyof typeof RATE_MODE]
 
 export const RATE_MODE_VALUES = Object.values(RATE_MODE) as [RateMode, ...RateMode[]]
 
+// ── 停药方案组的周期模式（D-44） ────────────────────────────────
+/**
+ * ★ 这不是 v10.1 那个被删除的 `CYCLE_MODE`（它挂在**停药条目**上，已按 DQ-12 移除）。
+ * 本枚举挂在**方案组**上，表达「从健康角度的周期疗程」——用户 2026-09-22 裁决，
+ * 有意反转需求 §8.1 规则 2，理由与「不重现旧 bug」的机制见 docs/DECISIONS.md D-44。
+ */
+export const PAUSE_CYCLE_MODE = {
+  /** 连续：执行后一直到停止为止。原有行为，也是旧数据的兜底语义 */
+  CONTINUOUS: 'continuous',
+  /** 周期：吃 N 天停 M 天，从「执行日」起循环（执行日 = 周期第 1 天） */
+  CYCLIC: 'cyclic',
+} as const
+
+export type PauseCycleMode = (typeof PAUSE_CYCLE_MODE)[keyof typeof PAUSE_CYCLE_MODE]
+
+export const PAUSE_CYCLE_MODE_VALUES = Object.values(PAUSE_CYCLE_MODE) as [
+  PauseCycleMode,
+  ...PauseCycleMode[],
+]
+
+export const PAUSE_CYCLE_MODE_LABEL: Record<PauseCycleMode, string> = {
+  continuous: '连续',
+  cyclic: '周期',
+}
+
 // ── 记录来源（R-16：每条记录必须可溯源） ───────────────────────
 export const INTAKE_ORIGIN = {
   /** 计划内打卡 */

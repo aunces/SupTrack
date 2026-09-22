@@ -9,9 +9,9 @@
  */
 
 import type { IngredientUnit, UnitType } from '@/constants/units'
-import type { IntakeOrigin, RateMode, TimeSlot } from '@/constants/enums'
+import type { IntakeOrigin, PauseCycleMode, RateMode, TimeSlot } from '@/constants/enums'
 
-export type { IngredientUnit, IntakeOrigin, RateMode, TimeSlot, UnitType }
+export type { IngredientUnit, IntakeOrigin, PauseCycleMode, RateMode, TimeSlot, UnitType }
 
 // ── 1. 补剂 ──────────────────────────────────────────────────
 export interface Supplement {
@@ -103,10 +103,16 @@ export interface PauseScheme {
   note: string | null
   /** 是否执行中（同一时刻至多一组） */
   isActive: boolean
-  /** 执行起始日 */
+  /** 执行起始日；**周期模式下它同时是周期第 1 天**（D-44） */
   activatedAt: string | null
   /** 结束日；空且 isActive = 持续中 */
   endedAt: string | null
+  /** 连续 / 周期（D-44）。旧数据无此字段，按「连续」处理 */
+  cycleMode: PauseCycleMode
+  /** 吃 N 天；cycleMode = 'continuous' 时为 null */
+  cycleOnDays: number | null
+  /** 停 M 天；cycleMode = 'continuous' 时为 null */
+  cycleOffDays: number | null
   createdAt: string
   updatedAt: string
 }

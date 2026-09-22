@@ -1,4 +1,5 @@
 import { db } from '@/db'
+import { PAUSE_CYCLE_MODE, type PauseCycleMode } from '@/constants/enums'
 import { pausePeriodRepository, pauseSchemeRepository } from '@/repositories'
 import { parseOrThrow } from '@/schemas/common'
 import { PausePeriodCreateSchema } from '@/schemas/pausePeriod'
@@ -37,6 +38,13 @@ export interface PauseEntryInput {
 export interface PauseSchemeDraft {
   name: string
   note: string | null
+  /**
+   * 连续 / 周期（D-44）。周期模式下「起点」= 执行方案组那天。
+   * 三个字段都省略 = 连续 —— 不关心周期的调用方不必写。
+   */
+  cycleMode?: PauseCycleMode
+  cycleOnDays?: number | null
+  cycleOffDays?: number | null
   entries: PauseEntryInput[]
 }
 
@@ -83,6 +91,9 @@ export async function createScheme(input: PauseSchemeDraft): Promise<PauseScheme
     isActive: false,
     activatedAt: null,
     endedAt: null,
+    cycleMode: input.cycleMode ?? PAUSE_CYCLE_MODE.CONTINUOUS,
+    cycleOnDays: input.cycleOnDays ?? null,
+    cycleOffDays: input.cycleOffDays ?? null,
     createdAt: now,
     updatedAt: now,
   })
@@ -116,7 +127,13 @@ export async function updateScheme(id: string, input: PauseSchemeDraft): Promise
   const now = nowIso()
   if (!(await db.pauseSchemes.get(id))) throw new Error('方案组不存在')
 
-  const patch = parseOrThrow(PauseSchemeUpdateSchema, { name: input.name, note: input.note })
+  const patch = parseOrThrow(PauseSchemeUpdateSchema, {
+    name: input.name,
+    note: input.note,
+    cycleMode: input.cycleMode,
+    cycleOnDays: input.cycleOnDays,
+    cycleOffDays: input.cycleOffDays,
+  })
 
   await db.transaction('rw', db.pauseSchemes, db.pausePeriods, async () => {
     await db.pauseSchemes.update(id, { ...patch, updatedAt: now })

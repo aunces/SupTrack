@@ -27,6 +27,9 @@ async function seedAll() {
     isActive: true,
     activatedAt: '2026-09-18',
     endedAt: null,
+    cycleMode: 'continuous',
+    cycleOnDays: null,
+    cycleOffDays: null,
     createdAt: '2026-09-18T00:00:00.000Z',
     updatedAt: '2026-09-18T00:00:00.000Z',
   })
