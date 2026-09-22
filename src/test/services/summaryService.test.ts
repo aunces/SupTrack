@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { summarizeDate } from '@/services/summaryService'
+import { exceedsUpperLimit } from '@/utils/summary'
 import {
   resetDb,
   seedIngredient,
@@ -291,6 +292,13 @@ describe('口径 3 · 单位归一 / IU 与 ml 独立', () => {
   })
 })
 
+/**
+ * 口径 4 · 数据层不下结论（R-02，逐字检查）。
+ *
+ * 2026-09-22 起有一处**受控**放行：`exceedsUpperLimit()` 供 UI 标红（D-43）。
+ * 它仍然不写进输出对象，所以下面这组「输出对象没有判断性字段」的断言**一字未改**，
+ * 唯一变动的是文件末尾新增了一组对该函数的独立用例。
+ */
 describe('口径 4 · 输出不含任何结论性字段（R-02，逐字检查）', () => {
   it('IngredientTotal 的键里没有 level / over / warn / status / percent / advice 之类', async () => {
     const supplement = await seedSupplement()
@@ -402,5 +410,136 @@ describe('边界与防御', () => {
     expect(totals).toHaveLength(1)
     expect(totals[0].hasDeletedSupplement).toBe(true)
     expect(totals[0].sources[0].supplementName).toBe('[已删除的补剂]')
+  })
+})
+
+/**
+ * 超上限判定（D-43，用户裁决的标红口径）。
+ *
+ * 这里只测一件事：**单位换算**。上限是用户按成分自己的单位填的，
+ * 而合计在重量类下被归一到了 μg —— 少一次换算就会在
+ * 「成分 mg、每份 1 mg、上限 1 mg」这种最常见的情况下误报超限。
+ */
+describe('exceedsUpperLimit · 只表达「高于你自配的上限」这一个事实', () => {
+  /**
+   * 造一组「一种成分 + 一个补剂 + 一条已服用记录」。
+   *
+   * 名字是必填的：`summarizeDate(DATE)` 返回的是**该日全部成分**，
+   * 一个用例里造两组就得按名字取回自己那一行，否则第二个调用会拿到第一个的行。
+   */
+  async function totalOf(options: {
+    /** 同一用例内多次调用时必须给不同名字 */
+    name: string
+    unit: 'mg' | 'μg' | 'g' | 'IU' | 'ml'
+    upperLimit: number | null
+    perServing: number
+    amount?: number
+  }) {
+    const supplement = await seedSupplement({ name: `${options.name}胶囊` })
+    const ingredient = await seedIngredient({
+      name: options.name,
+      unit: options.unit,
+      upperLimit: options.upperLimit,
+    })
+    await seedIngredientLink({
+      supplementId: supplement.id,
+      ingredientId: ingredient.id,
+      amountPerServing: options.perServing,
+    })
+    await seedIntake({
+      date: DATE,
+      supplementId: supplement.id,
+      amount: options.amount ?? 1,
+      taken: true,
+    })
+
+    const found = (await summarizeDate(DATE)).find((item) => item.name === options.name)
+    if (!found) throw new Error(`未生成成分行：${options.name}`)
+    return found
+  }
+
+  it('没设上限 → 永远不判超限（系统不预置任何默认阈值）', async () => {
+    const total = await totalOf({
+      name: '无上限成分',
+      unit: 'mg',
+      upperLimit: null,
+      perServing: 999_999,
+    })
+    expect(total.upperLimit).toBeNull()
+    expect(exceedsUpperLimit(total)).toBe(false)
+  })
+
+  it('低于上限 → 不标红', async () => {
+    const total = await totalOf({ name: '低于', unit: 'mg', upperLimit: 40, perServing: 15 })
+    expect(total.displayValue).toBe(15)
+    expect(exceedsUpperLimit(total)).toBe(false)
+  })
+
+  it('**等于**上限 → 不算超过（边界不算超）', async () => {
+    const total = await totalOf({ name: '相等', unit: 'mg', upperLimit: 40, perServing: 40 })
+    expect(total.total).toBe(40_000)
+    expect(total.upperLimit).toBe(40)
+    expect(exceedsUpperLimit(total)).toBe(false)
+  })
+
+  it('高于上限 → 标红（mg：合计 30 mg > 上限 20 mg）', async () => {
+    const total = await totalOf({ name: '超出', unit: 'mg', upperLimit: 20, perServing: 30 })
+    expect(exceedsUpperLimit(total)).toBe(true)
+  })
+
+  it('界面显示为 1 mg 但内部是 1000 μg，仍按同单位比较得出「相等不超限」', async () => {
+    // 这条正是「换算写错就会漏」的地方：直接拿 displayValue(1) 比 upperLimit(1) 会凑巧对，
+    // 但拿 total(1000) 比 upperLimit(1) 就必然误报。函数必须自己归一。
+    const total = await totalOf({ name: '一毫克', unit: 'mg', upperLimit: 1, perServing: 1 })
+    expect(total.total).toBe(1000)
+    expect(total.displayValue).toBe(1)
+    expect(total.displayUnit).toBe('mg')
+    expect(exceedsUpperLimit(total)).toBe(false)
+
+    const over = await totalOf({ name: '两毫克', unit: 'mg', upperLimit: 1, perServing: 2 })
+    expect(over.total).toBe(2000)
+    expect(over.displayValue).toBe(2)
+    expect(exceedsUpperLimit(over)).toBe(true)
+  })
+
+  it('μg 成分同样按 μg 比较（上限 500 μg、每份 600 μg → 超）', async () => {
+    const total = await totalOf({ name: '微克', unit: 'μg', upperLimit: 500, perServing: 600 })
+    expect(total.displayUnit).toBe('μg')
+    expect(exceedsUpperLimit(total)).toBe(true)
+  })
+
+  it('IU 不走重量换算，直接按原值比较', async () => {
+    const under = await totalOf({ name: '未超IU', unit: 'IU', upperLimit: 4000, perServing: 1000 })
+    expect(exceedsUpperLimit(under)).toBe(false)
+
+    const over = await totalOf({ name: '超出IU', unit: 'IU', upperLimit: 800, perServing: 1400 })
+    expect(over.total).toBe(1400)
+    expect(exceedsUpperLimit(over)).toBe(true)
+  })
+
+  it('追加一次（多一条 taken 记录）会把合计推过上限', async () => {
+    const supplement = await seedSupplement()
+    const zinc = await seedIngredient({ name: '锌', unit: 'mg', upperLimit: 20 })
+    await seedIngredientLink({
+      supplementId: supplement.id,
+      ingredientId: zinc.id,
+      amountPerServing: 15,
+    })
+    await seedIntake({ date: DATE, supplementId: supplement.id, amount: 1, taken: true })
+    expect(exceedsUpperLimit((await summarizeDate(DATE))[0])).toBe(false)
+
+    // 追加一次：同日同补剂再一条 taken 记录（与 appendIntake 等价）
+    await seedIntake({
+      date: DATE,
+      supplementId: supplement.id,
+      amount: 1,
+      taken: true,
+      origin: 'extra',
+      isExtra: true,
+    })
+
+    const total = (await summarizeDate(DATE))[0]
+    expect(total.total).toBe(30_000)
+    expect(exceedsUpperLimit(total)).toBe(true)
   })
 })

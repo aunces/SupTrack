@@ -184,3 +184,45 @@ describe('isRateConfigValid', () => {
     ).toBe(false)
   })
 })
+
+/**
+ * 吃 21 停 7（周期 28 天）—— 长期疗程最常见的一种。
+ *
+ * 与吃 5 停 2 走的是**同一段代码**，单独钉一组是因为周期长（28 天）会踩到两个量：
+ * ①`nextRateDate` 的搜索上界必须 ≥ on+off，否则休息段会找不到下一次
+ * ②`matchesRate` 的取模在跨月、跨多轮时不能漂
+ */
+describe('吃 21 停 7（周期 28 天）', () => {
+  const on21off7 = plan({
+    rateMode: 'cyclic',
+    rateOnDays: 21,
+    rateOffDays: 7,
+    rateAnchorDate: '2026-09-01',
+  })
+
+  it('第 1–21 天该吃、第 22–28 天休息、第 29 天进入下一轮', () => {
+    expect(matchesRate(on21off7, '2026-09-01')).toBe(true) // 第 1 天
+    expect(matchesRate(on21off7, '2026-09-21')).toBe(true) // 第 21 天
+    expect(matchesRate(on21off7, '2026-09-22')).toBe(false) // 第 22 天
+    expect(matchesRate(on21off7, '2026-09-28')).toBe(false) // 第 28 天
+    expect(matchesRate(on21off7, '2026-09-29')).toBe(true) // 第 29 天 = 第 2 轮第 1 天
+  })
+
+  it('跨月也不漂：第 2 轮的第 21 / 22 天仍准（10/19 该吃、10/20 休息）', () => {
+    expect(matchesRate(on21off7, '2026-10-19')).toBe(true) // 第 49 天
+    expect(matchesRate(on21off7, '2026-10-20')).toBe(false) // 第 50 天
+  })
+
+  it('休息段内任意一天，「下次」都指向下一轮的起点日（起点 + 28）', () => {
+    expect(nextRateDate(on21off7, '2026-09-22')).toBe('2026-09-29')
+    expect(nextRateDate(on21off7, '2026-09-28')).toBe('2026-09-29')
+  })
+
+  it('文案是「吃 21 停 7」（不是「每 8 天一次」）', () => {
+    expect(describeRate(on21off7)).toBe('吃 21 停 7')
+  })
+
+  it('日均出现率 21/28 = 0.75 —— 余量偏低按此折算，不能按每天算', () => {
+    expect(rateDensity(on21off7)).toBeCloseTo(0.75)
+  })
+})

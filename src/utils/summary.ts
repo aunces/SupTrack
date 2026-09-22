@@ -9,10 +9,14 @@ import { isWeightUnit, pickDisplayUnit, toMicrogram } from './unit'
  *   1. 只统计 `record.taken === true` —— 标了漏服的记录不计入
  *   2. 按**服用归属日**当时有效的配方算（不是 createdAt）
  *   3. 重量类（μg / mg / g）归一到 μg 再累加；IU 与 ml **各自独立累加**，互不相加
- *   4. 输出只有数字与并列 —— 不产生任何「超标 / 过量 / 建议」字段，颜色与图标由 UI 层禁止
+ *   4. 输出对象里**没有**任何结论性字段（level / status / warning 之类）—— 数据层不下结论；
+ *      唯一的例外是文件末尾的 `exceedsUpperLimit()`：一个供 UI 标红用的纯比较函数，
+ *      它不写进输出对象、不产出任何文案。
  *
- * 口径 4 是产品合规红线（R-02）：本文件里**不允许**出现 level / status / overLimit /
- * warning 之类的字段名，一个都不行。测试会断言这些名字不存在。
+ * 口径 4 是产品合规红线（R-02）。用户于 2026-09-22 裁决：一览改为由**用户自己配置的上限**
+ * 驱动标红（见 docs/DECISIONS.md D-43），因此这里放行一个显式的比较函数。
+ * 其余红线**依旧禁止**：进度条着色、告警图标、健康评分，以及任何
+ * 「超标 / 过量 / 有害 / 建议减少」措辞。测试逐字断言这些名字不存在。
  */
 
 export interface IngredientTotal {
@@ -143,4 +147,25 @@ export function computeIngredientTotals(input: SummaryInput): IngredientTotal[] 
 
   // 排序只按名称：按数值排会让「今天第一行」随数字跳动，且暗示了大小关系
   return totals.sort((a, b) => a.name.localeCompare(b.name, 'zh'))
+}
+
+/**
+ * 今日合计是否已高于用户自配的上限（D-43）。
+ *
+ * ★ 这是本项目里**唯一**一处「替用户做比较」的地方，是 2026-09-22 用户明确裁决的结果
+ *   （原口径按 §6.6 禁止「超限变红」）。它只是一次纯比较，不产生文案、不写进输出对象。
+ *
+ * 为什么必须放在这里而不是组件里：`upperLimit` 是用户按**成分自己的单位**填的（例如 40 mg），
+ * 而 `total` 在重量类下已被归一到 μg。直接比大小会在「上限填 mg、合计展示 g」时算错，
+ * 这个换算只应该有一份实现。
+ *
+ * 边界：**相等不算超过**（合计 40 mg、上限 40 mg → 不标红）。
+ * 没设上限（null）永远不标红 —— 系统不预置任何默认阈值。
+ */
+export function exceedsUpperLimit(total: IngredientTotal): boolean {
+  if (total.upperLimit == null) return false
+  const limit = isWeightUnit(total.unit)
+    ? toMicrogram(total.upperLimit, total.unit)
+    : total.upperLimit
+  return total.total > limit
 }
