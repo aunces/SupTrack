@@ -1,0 +1,702 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SupTrack 项目体检报告 · 2026-09-22</title>
+    <style>
+      :root {
+        --bg: #ffffff;
+        --fg: #1a1a1a;
+        --muted: #6b7280;
+        --line: #e5e7eb;
+        --card: #ffffff;
+        --soft: #f9fafb;
+        --accent: #111827;
+        --p0: #dc2626;
+        --p0bg: #fef2f2;
+        --p1: #ea580c;
+        --p1bg: #fff7ed;
+        --p2: #ca8a04;
+        --p2bg: #fefce8;
+        --ok: #059669;
+        --okbg: #f0fdf4;
+        --info: #2563eb;
+        --infobg: #eff6ff;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 40px 24px 80px;
+        background: #f3f4f6;
+        color: var(--fg);
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', 'Segoe UI',
+          sans-serif;
+        font-size: 14px;
+        line-height: 1.7;
+      }
+      .wrap {
+        max-width: 920px;
+        margin: 0 auto;
+      }
+      h1 {
+        font-size: 24px;
+        font-weight: 700;
+        margin: 0 0 6px;
+      }
+      .sub {
+        color: var(--muted);
+        font-size: 13px;
+        margin: 0 0 28px;
+      }
+      h2 {
+        font-size: 17px;
+        font-weight: 700;
+        margin: 36px 0 12px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid var(--line);
+      }
+      h3 {
+        font-size: 15px;
+        font-weight: 600;
+        margin: 22px 0 8px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 20px 22px;
+        margin-bottom: 16px;
+      }
+      .card.soft {
+        background: var(--soft);
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+        margin: 10px 0;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 9px 10px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+      }
+      th {
+        font-weight: 600;
+        background: var(--soft);
+        font-size: 12px;
+        color: var(--muted);
+        white-space: nowrap;
+      }
+      tr:last-child td {
+        border-bottom: none;
+      }
+      code {
+        background: #f3f4f6;
+        padding: 1px 5px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-family: ui-monospace, Menlo, Consolas, monospace;
+      }
+      .tag {
+        display: inline-block;
+        padding: 1px 8px;
+        border-radius: 99px;
+        font-size: 11px;
+        font-weight: 600;
+        white-space: nowrap;
+        line-height: 1.7;
+      }
+      .t-p0 {
+        background: var(--p0bg);
+        color: var(--p0);
+      }
+      .t-p1 {
+        background: var(--p1bg);
+        color: var(--p1);
+      }
+      .t-p2 {
+        background: var(--p2bg);
+        color: var(--p2);
+      }
+      .t-ok {
+        background: var(--okbg);
+        color: var(--ok);
+      }
+      .t-info {
+        background: var(--infobg);
+        color: var(--info);
+      }
+      .kpis {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 12px;
+        margin: 16px 0;
+      }
+      .kpi {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 14px 16px;
+      }
+      .kpi .n {
+        font-size: 24px;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        line-height: 1.2;
+      }
+      .kpi .l {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 2px;
+      }
+      .kpi.ok .n {
+        color: var(--ok);
+      }
+      .kpi.warn .n {
+        color: var(--p2);
+      }
+      ul {
+        margin: 8px 0;
+        padding-left: 22px;
+      }
+      li {
+        margin: 5px 0;
+      }
+      .lead {
+        font-size: 15px;
+        font-weight: 600;
+        margin: 0 0 4px;
+      }
+      .note {
+        font-size: 12.5px;
+        color: var(--muted);
+        margin-top: 6px;
+      }
+      .hi {
+        background: #fffbeb;
+        border-left: 3px solid var(--p2);
+        padding: 10px 14px;
+        border-radius: 0 8px 8px 0;
+        margin: 12px 0;
+        font-size: 13px;
+      }
+      .good {
+        background: var(--okbg);
+        border-left: 3px solid var(--ok);
+        padding: 10px 14px;
+        border-radius: 0 8px 8px 0;
+        margin: 12px 0;
+        font-size: 13px;
+      }
+      .bad {
+        background: var(--p0bg);
+        border-left: 3px solid var(--p0);
+        padding: 10px 14px;
+        border-radius: 0 8px 8px 0;
+        margin: 12px 0;
+        font-size: 13px;
+      }
+      .grid2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+      }
+      @media (max-width: 720px) {
+        .grid2 {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>SupTrack 项目体检报告</h1>
+      <p class="sub">
+        2026-09-22 · 范围：<code>src/</code> 全部代码 + <code>docs/</code> 全部 10 份文档 +
+        Ardot《SupTrack · UI 设计稿 v1.0》(727847477232991)<br /><b style="color: #059669"
+          >本报告发出后当日已完成处理：P0 文档归档 + L-3 / L-4 修复。详见文末「处理结果」。</b
+        >
+      </p>
+
+      <div class="card soft">
+        <p class="lead">一句话结论</p>
+        <p style="margin: 0">
+          代码质量<b>远好于文档所描述的状态</b>——347 个测试全绿、类型与 lint
+          干净、四态判定与停药并集语义都写对了。真正的问题不在代码，而在<b>「文档三套并行、彼此打架」</b>：<code
+            >IMPLEMENTATION.md</code
+          >
+          还在描述 9 月 10 日那套已被推翻的库存状态机方案（110 用例），<code>REQUIREMENTS.md</code>
+          停留在 v11.3，而代码已按 v12.2 + 设计稿走到 M3。
+        </p>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi ok">
+          <div class="n">347</div>
+          <div class="l">测试用例全通过（24 文件）</div>
+        </div>
+        <div class="kpi ok">
+          <div class="n">0</div>
+          <div class="l">TS 错误 / lint 错误</div>
+        </div>
+        <div class="kpi">
+          <div class="n">134</div>
+          <div class="l">源码文件（81 ts + 53 tsx）</div>
+        </div>
+        <div class="kpi ok">
+          <div class="n">2</div>
+          <div class="l">本轮已修复遗留项（L-3 / L-4）</div>
+        </div>
+      </div>
+
+      <h2>1. 我实际看到的东西</h2>
+
+      <h3>1.1 代码现状</h3>
+      <table>
+        <tr>
+          <th>层</th>
+          <th>实际内容</th>
+          <th>判断</th>
+        </tr>
+        <tr>
+          <td>技术栈</td>
+          <td>
+            Vite 7 + React 19 + TS 5.8 + Tailwind 4 + shadcn/ui + Dexie 4 + Zustand + Zod + date-fns
+            + lucide
+          </td>
+          <td><span class="tag t-ok">与 v12.2 §1.2 一致</span></td>
+        </tr>
+        <tr>
+          <td>数据层</td>
+          <td>
+            7 张表（supplements / plans / intakes / pausePeriods / pauseSchemes + ingredients /
+            supplementIngredients）<code>db/schema.ts</code> 唯一来源
+          </td>
+          <td><span class="tag t-ok">v12 简化模型已落地</span></td>
+        </tr>
+        <tr>
+          <td>核心判定</td>
+          <td>
+            <code>utils/rate.ts</code
+            >（节奏）、<code>utils/pause.ts</code>（停药并集）、<code>utils/dayState.ts</code>（四态
+            + 日级状态）三个纯函数
+          </td>
+          <td><span class="tag t-ok">分层干净，可单测</span></td>
+        </tr>
+        <tr>
+          <td>服务层</td>
+          <td>11 个 service，页面不直连 db，取数全走 repository + <code>useLiveQuery</code></td>
+          <td><span class="tag t-ok">红线遵守</span></td>
+        </tr>
+        <tr>
+          <td>页面</td>
+          <td>6 个：今日 / 补剂 / 停药 / 日历 / 成分库 / 设置（M1→M3 全在）</td>
+          <td><span class="tag t-ok">无死链</span></td>
+        </tr>
+        <tr>
+          <td>测试</td>
+          <td>24 个测试文件 / 345 用例，含 29 条 pause、28 条 rate、33 条 summary 的边界覆盖</td>
+          <td><span class="tag t-ok">覆盖扎实</span></td>
+        </tr>
+      </table>
+
+      <h3>1.2 文档现状：三套并行，彼此打架</h3>
+      <table>
+        <tr>
+          <th>文件</th>
+          <th>它以为的「真相」</th>
+          <th>与代码的关系</th>
+        </tr>
+        <tr>
+          <td><code>IMPLEMENTATION.md</code></td>
+          <td>
+            v10.1 施工手册：库存 4 态状态机、StockLog 流水、软删除回收站、8 跳迁移链、110 用例
+          </td>
+          <td><span class="tag t-p0">已全被推翻</span></td>
+        </tr>
+        <tr>
+          <td><code>REQUIREMENTS.md</code></td>
+          <td>v11.3 增量：为 v10.1 做实现状态对照，DEV-01~21 偏差清单</td>
+          <td><span class="tag t-p1">已被 v12 降级为参考</span></td>
+        </tr>
+        <tr>
+          <td><code>v12.0-需求重梳理.md</code></td>
+          <td>v12.2 开发基线：5 张表、三概念、换心脏留脚手架</td>
+          <td><span class="tag t-ok">与代码基本对齐</span></td>
+        </tr>
+        <tr>
+          <td><code>实施指导书-AI执行版.md</code></td>
+          <td>施工图（含 §3 红线、§5 算法规格、§8 页面）</td>
+          <td><span class="tag t-ok">代码在按它走</span></td>
+        </tr>
+        <tr>
+          <td><code>UI设计提示词-v1.0.md</code></td>
+          <td>设计视图，声明「以实施指导书为准」</td>
+          <td><span class="tag t-p2">与代码有 3 处已裁决差异</span></td>
+        </tr>
+        <tr>
+          <td><code>DECISIONS.md</code></td>
+          <td>实施留痕：DIFF-01~06、D-1~D-44、L-1~L-4、U-1~U-2</td>
+          <td><span class="tag t-ok">最有价值的一份</span></td>
+        </tr>
+      </table>
+
+      <div class="bad">
+        <b>最刺眼的一处矛盾</b>：<code>IMPLEMENTATION.md</code> 的「进度记录」表写着 8 个 Phase 全部
+        ✅、<code>pnpm test</code> 110 用例全绿；但它描述的<b
+          >整条主链（库存状态机 → 软删除 → 回收站 → 补录昨日）在 v12.2 里已被明确删除</b
+        >（D1 余量降为单一数字、D2 砍回收站）。今天 <code>src/</code> 里既没有
+        <code>stockService.ts</code>，也没有
+        <code>deletedAt</code>
+        字段——这份文档会让任何接手的人（包括未来的你）按一套不存在的架构去理解代码。
+      </div>
+
+      <h2>2. 值得肯定的地方</h2>
+
+      <div class="good">
+        <b>原始痛点真的被解掉了。</b
+        >你的原始需求是「隔天吃的补剂怕记混」+「记录停药期」。代码里这条链是干净的：
+        <ul style="margin-bottom: 0">
+          <li>
+            <code>utils/rate.ts</code> 的 <code>matchesRate</code> 用
+            <code>diff % (on+off) &lt; on</code> 判定「该吃」，<code>nextRateDate</code> 给出「下次
+            9/22」——<b>P2 硬规则（每个「不吃」项必须给下次日期）落到了实处</b>。
+          </li>
+          <li>
+            <code>utils/pause.ts</code> 用并集语义（临时停药 ∪ 执行中方案组），且
+            <code>findActivePauses</code> 里对周期方案做了「吃段直接
+            <code>continue</code>」的处理——<b
+              >这正是 v11.1 那个旧 bug（用户自设的「隔天吃」被渲染成「停药中」）的根治方案</b
+            >，注释里也写清了这个意图。
+          </li>
+          <li>
+            失败方向统一为「不隐藏」：<code>isBeforeRateAnchor</code> 参数非法返回
+            <code>false</code>、<code>cycleParams</code> 失败返回 <code>null</code>——R-08 / DQ-11
+            的决议在代码里逐条兑现。
+          </li>
+        </ul>
+      </div>
+
+      <div class="good">
+        <b>「休息 ≠ 停用」这个全篇最重要的概念划分，代码守住了。</b
+        ><code>ItemState = 'pending' | 'taken' | 'rest' | 'paused'</code>，文案层
+        <code>StateLine</code>
+        用「今天不用吃」与「停用中」两个不同的词，四态图形是四种不同<b>形状</b>（实心点 / 对勾圆 /
+        虚线圆 / 斜纹方块）而非同圆换色——色盲通道保住了。
+      </div>
+
+      <h2>3. 待优化项</h2>
+
+      <h3>
+        <span class="tag t-p0">P0</span> &nbsp;文档已与代码脱节，存在「按错文档改代码」的实际风险
+      </h3>
+      <div class="card">
+        <p style="margin-top: 0">
+          <b>问题</b>：<code>IMPLEMENTATION.md</code> 通篇描述 v10.1
+          的库存状态机方案，其「未实现项」和「人工验收清单」会引导人去补做已被 D1/D2
+          砍掉的功能。<code>REQUIREMENTS.md</code> 的 DEV-01~21
+          偏差清单同理——其中大部分（DEV-01/03/05/06/07/08/11/14）随 v12 重写已自然消失。
+        </p>
+        <p><b>建议</b>（三选一，我推荐 A）：</p>
+        <ul>
+          <li>
+            <b>A（推荐）</b>：给 <code>IMPLEMENTATION.md</code> 与
+            <code>REQUIREMENTS.md</code> 各加一个 5 行的文件头横幅——「本文件描述 v10.1 方案，已被
+            v12.2 取代，仅作技术参考；当前基线见 <code>v12.0-需求重梳理.md</code>，实施留痕见
+            <code>DECISIONS.md</code>」。成本 5 分钟，不破坏历史。
+          </li>
+          <li>
+            <b>B</b>：把两份文档移入 <code>docs/archive/</code>，只留 v12.2 + 实施指导书 + DECISIONS
+            + UI 提示词四份在主目录。
+          </li>
+          <li>
+            <b>C</b>：删掉。不建议——<code>REQUIREMENTS.md</code> §8 的节奏模型推导过程仍有参考价值。
+          </li>
+        </ul>
+        <p class="note">
+          顺带：<code>IMPLEMENTATION.md</code> §9 那张「Phase 0–8 全 ✅ / 2026-09-10」的进度表，与
+          <code>DECISIONS.md</code> 里 M1/M2/M3 的里程碑说法是两套编号，建议统一到 M1/M2/M3。
+        </p>
+      </div>
+
+      <h3><span class="tag t-p1">P1</span> &nbsp;文件级与 docs 无关的一致性缺口</h3>
+      <div class="card">
+        <p style="margin-top: 0">
+          <b>3.1 今日页满宽 vs 全站 720 居中，是「代码已裁决、文档未记录」的孤例</b>
+        </p>
+        <p style="margin: 0 0 8px">
+          代码里 <code>AppShell</code> 用
+          <code>wide = pathname === '/'</code> 让今日页走满宽（左右留白 32），其余 5 页仍是
+          <code>max-w-[720px]</code> 居中；<code>today/index.tsx</code>
+          注释说明依据是设计稿的四时段看板。这在 <code>DECISIONS.md</code> 的 <b>D-40 有记录</b>，但
+          <code>UI设计提示词-v1.0.md</code> §2 三节仍写「内容区最大宽度 720px
+          居中」并列为硬性要求——两者直接冲突。
+        </p>
+        <p>
+          <b>建议</b>：在 <code>UI设计提示词</code> §2
+          布局段补一句例外条款（「今日页按设计稿走满宽看板，其余页面 720
+          居中」）。这是一处<b>文档内部</b>的自相矛盾，改一个文件即可。
+        </p>
+      </div>
+      <div class="card">
+        <p style="margin-top: 0"><b>3.2 走查清单的编号在两份文档间已经错位</b></p>
+        <p style="margin: 0">
+          <code>v12.2</code> §9 是「第 1–16 步属 M1，第 17–21 步属 M3」；<code>实施指导书</code>
+          §13.2 是另一套 21 步。<code>DECISIONS.md</code> 的 D-24/D-25/D-30/D-42 都在用「走查第 N
+          步」指代，但没写明是哪一份的编号。建议在
+          <code>DECISIONS.md</code> 开头补一行「本文所称『走查第 N 步』统一指
+          <code>实施指导书</code> §13.2」。
+        </p>
+      </div>
+
+      <h3><span class="tag t-p2">P2</span> &nbsp;细节</h3>
+      <div class="card">
+        <p style="margin-top: 0">
+          <b>4.1 三处已知遗留，代码里没有 TODO 标记</b>（都记在
+          <code>DECISIONS.md</code> §3，但不在代码里）：
+        </p>
+        <ul>
+          <li>
+            <b>L-2</b>：设计稿的成分汇总用 Geist 数字字体，实现用系统字体栈 +
+            <code>tabular-nums</code>。R-12 不允许新增依赖，Geist
+            需自托管——本条需你明确「保持现状」还是「自托管字体」。
+          </li>
+          <li>
+            <b>L-3</b
+            >：导入后「上次导出」显示的是备份文件里的时间，而非本次导入前自动备份的时间（设置页那一行会「好像变旧了」）。数据没丢，但观感误导。
+          </li>
+          <li>
+            <b>L-4</b>：日历详情在<b>历史日期</b>上仍沿用「今日休息」文案，严格说应为「该日休息」。
+          </li>
+        </ul>
+        <p style="margin-bottom: 0">
+          <b>建议</b>：在 <code>src/</code> 对应位置加
+          <code>// L-3: ...</code> 形式的注释锚点，让遗留项在代码里可见，不必翻文档。
+        </p>
+      </div>
+      <div class="card">
+        <p style="margin-top: 0"><b>4.2 组件层一处代码味道</b></p>
+        <p style="margin: 0">
+          页面/组件里有若干硬编码色值：<code>DayListItem</code> 的
+          <code>bg-[#F3FDF8]</code> 与打卡按钮 <code>bg-[#343434]</code>、<code>AppShell</code> 的
+          <code>bg-[#161616]</code>、今日页 <code>ExtraRecords</code> 的
+          <code>bg-[#FAFAFA]</code
+          >。这些是<b>刻意对齐设计稿</b>的选择（注释里都说明了理由），但散落在 4
+          个文件里，改一处主题要翻 4 处。建议收进 <code>src/styles/index.css</code> 的
+          <code>@theme</code> 或常量文件，例如 <code>--state-taken-bg</code> /
+          <code>--brand-ink</code>。<span class="note"
+            >（不是必须——若你更看重「与设计稿逐像素对齐」，现状可以保留。）</span
+          >
+        </p>
+      </div>
+
+      <h2>4. 关于 Ardot《SupTrack · UI 设计稿 v1.0》</h2>
+      <div class="card">
+        <p style="margin-top: 0">
+          文件 <code>727847477232991</code> 已打开（画布在编辑器里）。从
+          <code>DECISIONS.md</code> 与 <code>AppShell</code> / <code>ItemStateView</code> /
+          <code>DayListItem</code> 的注释看，代码与设计稿的关系是<b>健康且有记录的</b>：
+        </p>
+        <table>
+          <tr>
+            <th>设计稿元素</th>
+            <th>代码落实</th>
+            <th>状态</th>
+          </tr>
+          <tr>
+            <td>侧栏 · 220（<code>30:20</code>）</td>
+            <td>品牌标识 20×20 / 圆角 6 / #161616、导航项高 36 / 圆角 6 / 图标 16 + 间距 8</td>
+            <td><span class="tag t-ok">逐项对齐（D-38）</span></td>
+          </tr>
+          <tr>
+            <td>四态卡片底色</td>
+            <td>待服用白 / 已服用 #F3FDF8 / 休息 #F8FAFC / 停用 #F5F3FF</td>
+            <td><span class="tag t-ok">照搬</span></td>
+          </tr>
+          <tr>
+            <td>四态图形</td>
+            <td>实心点 8 / 对勾圆 13.3 / 休息圈 11 / 停用方块 11.7</td>
+            <td><span class="tag t-info">尺寸照设计稿，休息用虚线圆（§5.2 优先）</span></td>
+          </tr>
+          <tr>
+            <td>今日页满宽 + 四时段看板</td>
+            <td><code>wide</code> 分支 + <code>TimeSlotColumn</code> ×4 并排</td>
+            <td><span class="tag t-ok">用户已裁决（D-40）</span></td>
+          </tr>
+          <tr>
+            <td>成分卡口径</td>
+            <td>只统计 <code>taken=true</code>，超上限标 destructive</td>
+            <td><span class="tag t-p2">与设计稿文案待同步（L-1 / D-43）</span></td>
+          </tr>
+        </table>
+        <p class="note" style="margin-bottom: 0">
+          唯一需要你决策的仍是
+          <b>L-1</b>：设计稿的成分卡口径与位置、今日页满宽、导航项数这三处不一致——<code
+            >DECISIONS.md</code
+          >
+          说「M3 实现成分卡时同步更新设计稿文案与排布」，现在 M3 已经落地，<b>该轮到改设计稿了</b>。
+        </p>
+      </div>
+
+      <h2>5. 建议的下一步</h2>
+      <div class="card soft">
+        <ol style="margin: 0; padding-left: 22px">
+          <li>
+            <b>先收口文档</b>（P0，5–15 分钟）：给 <code>IMPLEMENTATION.md</code> /
+            <code>REQUIREMENTS.md</code> 加弃用横幅，或移入 <code>archive/</code>。
+          </li>
+          <li>
+            <b>修文档自相矛盾</b>（P1）：<code>UI设计提示词</code> §2 补今日页满宽例外；<code
+              >DECISIONS.md</code
+            >
+            开头声明走查编号出处。
+          </li>
+          <li>
+            <b>L-1 决策</b>：既然 M3
+            已落地，把设计稿的成分卡文案与位置改成与实现一致（这是你手上唯一真正「设计稿落后于代码」的待办）。
+          </li>
+          <li>
+            <b>L-3 / L-4 判定</b
+            >：这两个都是一行代码的事，你说「改」我就改，说「留」就给代码加注释锚点。
+          </li>
+          <li>
+            <b>（可选）</b>今天页之外的 5
+            个页面是否也要走看板式满宽？目前只有今日页满宽，切换页面时内容区宽度会跳变，观感上有一点割裂。
+          </li>
+        </ol>
+      </div>
+
+      <p class="note" style="text-align: center; margin-top: 40px">
+        本报告基于 2026-09-22 的工作区实际状态生成。测试结论来自实跑的 <code>pnpm test</code> /
+        <code>typecheck</code> / <code>lint</code>。
+      </p>
+
+      <h2 id="fixed">6. 处理结果（2026-09-22 当日完成）</h2>
+
+      <div class="good">
+        <b>P0 文档归档 ✅</b>
+        <ul>
+          <li>
+            <code>docs/IMPLEMENTATION.md</code> →
+            <code>docs/archive/IMPLEMENTATION.md</code>（文首加 20 行弃用横幅，列出「你要找什么 →
+            去看哪个文件」对照表）
+          </li>
+          <li>
+            <code>docs/REQUIREMENTS.md</code> →
+            <code>docs/archive/REQUIREMENTS.md</code>（同上，并点名 DEV-01/03/05/06/07/08/11/14
+            已随重写消失）
+          </li>
+          <li>
+            同步修正活跃文档里的陈旧路径引用：<code>v12.0-需求重梳理.md</code>（3 处）、<code
+              >实施指导书</code
+            >
+            §0.2 与 R-07（2 处）
+          </li>
+          <li>
+            <code>DECISIONS.md</code> 文首新增「文档地图」（有效文档 4 份 + 归档 2
+            份）与「走查编号约定」（统一指实施指导书 §13.2）
+          </li>
+        </ul>
+        <p style="margin: 8px 0 0">
+          <b>当前 <code>docs/</code> 有效文档只有四份</b
+          >：<code>v12.0-需求重梳理.md</code>（需求基线）、<code>实施指导书-AI执行版.md</code>（施工图）、<code>UI设计提示词-v1.0.md</code>（视觉规范）、<code>DECISIONS.md</code>（实施留痕）。
+        </p>
+      </div>
+
+      <div class="good">
+        <b>L-3 修复 ✅</b> —— 导入后「上次导出」不再显示备份文件里的旧时间
+        <ul style="margin-bottom: 0">
+          <li>
+            <b>改法</b>：在导入事务<b>末尾</b>（<code>metaService.initDefaults()</code> 之后）把
+            <code>lastExportAt</code> 重写为本次导入时间
+          </li>
+          <li>
+            <b>一个额外的判断</b>：仅当真的做了自动备份（<code>skipBackup !== true</code
+            >）才重写。跳过备份时用户磁盘上没有新文件，保留原值才不会说假话
+          </li>
+          <li>
+            <b>测试</b>：新增 2 条（含 DOM 环境 stub，因为测试跑在 node 下而
+            <code>exportToFile</code> 要点 <code>&lt;a&gt;</code> 触发下载）
+          </li>
+        </ul>
+      </div>
+
+      <div class="good">
+        <b>L-4 修复 ✅</b> —— 日历不再在历史日期上说「今天」
+        <p style="margin: 8px 0 4px">改了四处，其中一处在外溢范围之外、是排查时发现的同类问题：</p>
+        <ul style="margin-bottom: 0">
+          <li>
+            <code>pages/calendar</code> <code>BackfillEntry</code>：「今日休息」→「<b>该日休息</b>」
+          </li>
+          <li>同页详情卡统计行：「今天休息 N」→「<b>休息 N</b>」</li>
+          <li>同页图例：「今天休息」→「<b>休息</b>」（图例是给整月用的，不特指今天）</li>
+          <li>
+            <b>（额外）</b>共用组件 <code>ItemStateView::StateLine</code> 的休息文案改为按
+            <code>item.date === today()</code>
+            分支：今天说「今天不用吃」，历史日期说「<b>该日不用吃</b>」——该组件今日页与日历详情共用，写死「今天」在日历上就是错话
+          </li>
+        </ul>
+      </div>
+
+      <div class="card soft">
+        <p style="margin: 0">
+          <b>验证</b>：<code>pnpm test</code> <b>347 通过</b>（原 345 + 新增 2）·
+          <code>pnpm typecheck</code> 0 错误 · <code>pnpm lint</code> 0 错误 ·
+          <code>pnpm build</code> 成功（10.37s）。
+        </p>
+      </div>
+
+      <h3>仍未处理（等你决策）</h3>
+      <div class="card">
+        <table style="margin: 0">
+          <tr>
+            <th>#</th>
+            <th>项</th>
+            <th>说明</th>
+          </tr>
+          <tr>
+            <td><b>L-1</b></td>
+            <td>设计稿落后于代码</td>
+            <td>
+              成分卡口径与位置。M3 已落地，<b>该改 Ardot 设计稿了</b
+              >——这是目前唯一「设计稿落后于实现」的待办
+            </td>
+          </tr>
+          <tr>
+            <td><b>L-2</b></td>
+            <td>Geist 字体</td>
+            <td>
+              设计稿成分卡用 Geist，实现用系统字体栈 +
+              <code>tabular-nums</code>。要一致需自托管字体（R-12
+              不许新增依赖）——需你明确保持现状还是自托管
+            </td>
+          </tr>
+          <tr>
+            <td><b>P1</b></td>
+            <td>UI 提示词的满宽例外</td>
+            <td>
+              <code>UI设计提示词-v1.0.md</code> §2 仍写「内容区 720
+              居中」为硬性要求，与今日页满宽（D-40）冲突。建议补一句例外条款
+            </td>
+          </tr>
+          <tr>
+            <td><b>P2</b></td>
+            <td>硬编码色值</td>
+            <td>
+              <code>#F3FDF8</code> / <code>#343434</code> / <code>#161616</code> /
+              <code>#FAFAFA</code> 散落 4 文件，是刻意为对齐设计稿。收敛进
+              <code>@theme</code> 非必须
+            </td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </body>
+</html>

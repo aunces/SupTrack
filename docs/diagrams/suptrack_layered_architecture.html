@@ -1,0 +1,3552 @@
+<!doctype html>
+<html lang="zh-CN" data-page-node-id="HH8zPdnocmU6Yu9c6WBMVY">
+  <head data-page-node-id="AdDJQ61JEE43HLa8HtTsFB">
+    <meta charset="utf-8" data-page-node-id="MPCv6G8KbCFNBdUF8w4R31" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1"
+      data-page-node-id="wbXoT9Xox61tbxUqGd1HSR"
+    />
+    <title>Diagram Preview</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Arial, sans-serif;
+        background: #f5f7fb;
+        color: #1f2937;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 16px;
+        padding: 24px;
+        background:
+          radial-gradient(circle at top, rgba(59, 130, 246, 0.08), transparent 35%), #f5f7fb;
+      }
+      .actions {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+      }
+      .action-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        justify-content: center;
+      }
+      .quota-hint {
+        font-size: 13px;
+        color: #4b5563;
+        margin: 0;
+        text-align: center;
+      }
+      .action-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 42px;
+        padding: 0 18px;
+        border-radius: 999px;
+        border: 1px solid #d1d5db;
+        background: #ffffff;
+        color: #111827;
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 600;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+        cursor: pointer;
+      }
+      .feedback-button {
+        background: #16a34a;
+        border-color: #15803d;
+        color: #ffffff;
+      }
+      .tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: center;
+        margin-bottom: 16px;
+        width: 100%;
+      }
+      .tab-button {
+        padding: 8px 16px;
+        border-radius: 999px;
+        border: 1px solid #d1d5db;
+        background: #ffffff;
+        color: #374151;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        transition: all 0.2s;
+      }
+      .tab-button:hover {
+        background: #f3f4f6;
+      }
+      .tab-button.active {
+        background: #3b82f6;
+        color: #ffffff;
+        border-color: #3b82f6;
+      }
+      .canvas {
+        width: min(100%, 1600px);
+        min-width: 0;
+        padding: 24px;
+        border-radius: 20px;
+        background: #ffffff;
+        box-shadow: 0 18px 48px rgba(15, 23, 42, 0.12);
+      }
+      .view-controls {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+      .view-button {
+        padding: 6px 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        background: #ffffff;
+        color: #374151;
+        cursor: pointer;
+      }
+      .view-button[aria-pressed='true'] {
+        border-color: #3b82f6;
+        background: #eff6ff;
+        color: #1d4ed8;
+      }
+      .view-status {
+        color: #6b7280;
+        font-size: 12px;
+      }
+      .diagram-viewport {
+        width: 100%;
+        height: clamp(240px, 66vh, 900px);
+        overflow: auto;
+        overscroll-behavior: contain;
+      }
+      .diagram-frame {
+        width: 100%;
+        margin: 0 auto;
+      }
+      .tab-content {
+        display: none;
+        width: 100%;
+      }
+      .tab-content.active {
+        display: block;
+      }
+      .diagram-frame > svg {
+        display: block;
+        width: 100%;
+        height: 100%;
+        max-width: none;
+      }
+      .deep-edit-panel {
+        display: flex;
+        gap: 12px;
+        width: min(96vw, 1600px);
+        align-items: center;
+      }
+      .deep-edit-panel input {
+        flex: 1;
+        min-height: 42px;
+        padding: 0 18px;
+        border-radius: 999px;
+        border: 1px solid #d1d5db;
+        background: #ffffff;
+        font-size: 14px;
+        color: #111827;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+      }
+      .deep-edit-panel input:focus {
+        outline: none;
+        border-color: #3b82f6;
+      }
+      .deep-edit-submit {
+        background: #3b82f6;
+        border-color: #3b82f6;
+        color: #ffffff;
+        white-space: nowrap;
+      }
+      .deep-edit-submit:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+      .deep-edit-error {
+        width: min(96vw, 1600px);
+        margin: 0;
+        font-size: 13px;
+        color: #dc2626;
+        display: none;
+      }
+      .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.45);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 100;
+      }
+      .modal-dialog {
+        width: min(92vw, 420px);
+        background: #ffffff;
+        border-radius: 16px;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        box-shadow: 0 18px 48px rgba(15, 23, 42, 0.24);
+      }
+      .modal-dialog h3 {
+        margin: 0;
+        font-size: 16px;
+        color: #111827;
+      }
+      .modal-desc {
+        margin: 0;
+        font-size: 13px;
+        color: #4b5563;
+      }
+      .modal-dialog input {
+        padding: 10px 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        font-size: 14px;
+      }
+      .modal-dialog input:focus {
+        outline: none;
+        border-color: #3b82f6;
+      }
+      .modal-status {
+        margin: 0;
+        font-size: 13px;
+        min-height: 18px;
+      }
+      .modal-status.ok {
+        color: #16a34a;
+      }
+      .modal-status.err {
+        color: #dc2626;
+      }
+      .modal-actions {
+        display: flex;
+        gap: 8px;
+      }
+      .modal-actions button {
+        flex: 1;
+        min-height: 36px;
+        border-radius: 8px;
+        border: 1px solid #d1d5db;
+        background: #ffffff;
+        color: #111827;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .modal-actions button.primary {
+        background: #3b82f6;
+        border-color: #3b82f6;
+        color: #ffffff;
+      }
+      .modal-link {
+        font-size: 13px;
+        color: #3b82f6;
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body data-page-node-id="ll8tmjylvurddR1k6vkWvS">
+    <div class="actions" data-page-node-id="NN17ejyJgufdEuchUTjnnw">
+      <div class="action-buttons" data-page-node-id="0kn4jWuhxc3qYj1TyRVBDe">
+        <a
+          class="action-button feedback-button"
+          href="https://pptx.chenxitech.site/feedback?session_id=f7c03d7f-59b9-4438-8326-c2324351fcb9&amp;run_id=aider_stage1_f7c03d7f-59b9-4438-8326-c2324351fcb9"
+          target="_blank"
+          rel="noopener noreferrer"
+          data-page-node-id="WlIfDylxfMxAbamFQgnHuB"
+          >💡 提交反馈领免费 API Key</a
+        >
+        <button
+          class="action-button"
+          id="download-svg-button"
+          type="button"
+          data-page-node-id="ym4e9vhUZUheRGjn2TAHtr"
+        >
+          下载 SVG
+        </button>
+        <button
+          class="action-button"
+          id="api-key-config-button"
+          type="button"
+          data-page-node-id="GuEcvhTDvqPomSETXQ3tDy"
+        >
+          🔑 API Key 配置
+        </button>
+      </div>
+      <p class="quota-hint" data-page-node-id="QLnRxANl1z9gSNskSY3qx3">
+        🎁 提交反馈并完成邮箱验证，可免费领取更多额度
+      </p>
+    </div>
+    <div class="canvas" data-page-node-id="IYvuLESyQDh0rXLhlfGO7R">
+      <div
+        class="view-controls"
+        role="group"
+        aria-label="图示缩放"
+        data-page-node-id="AI3Z86uPhaKqBOYduV3stD"
+      >
+        <button
+          class="view-button"
+          type="button"
+          data-view="width"
+          aria-pressed="true"
+          title="适应宽度并保留可读字号，超宽图可横向滚动"
+          data-page-node-id="GRqpUeHRiwMXXqEXvjGTyF"
+        >
+          适宽
+        </button>
+        <button
+          class="view-button"
+          type="button"
+          data-view="all"
+          aria-pressed="false"
+          data-page-node-id="C413MiGxRNUQXByhKNuV4C"
+        >
+          全图
+        </button>
+        <button
+          class="view-button"
+          type="button"
+          data-view="actual"
+          aria-pressed="false"
+          data-page-node-id="I8Ln33TuqLUOONNvrE2pKI"
+        >
+          原尺寸
+        </button>
+        <span
+          class="view-status"
+          aria-live="polite"
+          data-page-node-id="lRsEp6ycPX8YfNhbtT659X"
+        ></span>
+      </div>
+      <div
+        class="diagram-viewport"
+        tabindex="0"
+        role="region"
+        aria-label="图示，可滚动查看"
+        data-page-node-id="Q1oLPzvrUWHVX7YA5225Ii"
+      >
+        <div class="diagram-frame" data-page-node-id="bnJiHbjVVNecROO6dEU1JJ">
+          <?xml version="1.0" encoding="utf-8"?><svg
+            xmlns="http://www.w3.org/2000/svg"
+            xmlns:xlink="http://www.w3.org/1999/xlink"
+            data-d2-version="v0.8.1-HEAD"
+            preserveAspectRatio="xMinYMin meet"
+            viewBox="0 0 6055 2685"
+            width="7266"
+            height="3222"
+            data-page-node-id="gNHChtNDS40UTgw7VCNb2D"
+          >
+            <svg
+              class="d2-2876619026 d2-svg"
+              width="6055"
+              height="2685"
+              viewBox="-11 -11 6055 2685"
+              data-page-node-id="kyzTvLIaHGNoKueRidkzCY"
+            >
+              <rect
+                x="-11"
+                y="-11"
+                width="6055"
+                height="2685"
+                rx="0"
+                fill="#FFFFFF"
+                class="fill-N7"
+                stroke-width="0"
+                data-page-node-id="E6o8wDc0HOeZ9MWLXITiMy"
+              />
+              <style type="text/css">
+                <![CDATA[
+.d2-2876619026 .text {
+	font-family: "d2-2876619026-font-regular";
+}
+@font-face {
+	font-family: d2-2876619026-font-regular;
+	src: url("data:application/font-woff;base64,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");
+}
+.d2-2876619026 .text-semibold {
+	font-family: "d2-2876619026-font-semibold";
+}
+@font-face {
+	font-family: d2-2876619026-font-semibold;
+	src: url("data:application/font-woff;base64,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");
+}
+.d2-2876619026 .text-bold {
+	font-family: "d2-2876619026-font-bold";
+}
+@font-face {
+	font-family: d2-2876619026-font-bold;
+	src: url("data:application/font-woff;base64,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");
+}
+.d2-2876619026 .text-italic {
+	font-family: "d2-2876619026-font-italic";
+}
+@font-face {
+	font-family: d2-2876619026-font-italic;
+	src: url("data:application/font-woff;base64,d09GRgABAAAAABdgAAoAAAAAIvAAARhRAAAAAAAAAAAAAAAAAAAAAAAAAABPUy8yAAAA9AAAAGAAAABgW1SVeGNtYXAAAAFUAAAA8gAAAWItfioFZ2x5ZgAAAkgAAA+7AAAV8MpNPY9oZWFkAAASBAAAADYAAAA2G7Ur2mhoZWEAABI8AAAAJAAAACQLeAjuaG10eAAAEmAAAAD7AAABKId+CCRsb2NhAAATXAAAAJYAAACW2O7TJm1heHAAABP0AAAAIAAAACAAYgD2bmFtZQAAFBQAAAMrAAAIMgntVzNwb3N0AAAXQAAAACAAAAAg/8YAMgADAeEBkAAFAAACigJY//EASwKKAlgARAFeADIBIwAAAgsFAwMEAwkCBCAAAHcAAAADAAAAAAAAAABBREJPAAEAIP//Au7/BgAAA9gBESAAAZMAAAAAAeYClAAAACAAA3iclNDJTlphGMfh5xRaaBlKWwod6aG0pSOdnFBEcSCauNZE48K9C+POC/AGvBaHjTF6Fe6MeCOfyYmJiTvzbp/F7/0jkhIhLx0toyWWVhRr+O6HX1p+a+vo6lu0YtWadVt2HDmPy/W9ELjj/yS+Z8HSjd+wfevDQE1FVUFOKQRZmXAWTsNJOA5XYRAOw0HYDZuXzYv9pO4+F+mZNmNc21TS8tc//w0ZNmLUmDnzHkhJe+iRjKzHnsjJKyh6quSZ514oe6liUlfVK6+98dY779V8EKv7qOGTz75o+upb8v/PZIGOWRP6XAMAAP//AwCWgDSuAAB4nHx4C3Bb1Z3++Z17rWvLsmxZr0ixLEtX0tXb1r2SrmxZkmX5bcnP2DGJH3knztMEEuCfBCjpNCH/kgomhRayC7uwtAztwoTuzKbL0kLYkgbSfQzd0rLNLI+GlmwH8HiBdvDVzrmSbSU7szOxckc693e+77vf73EuqkAOhPBBfA5RqArVonqkR0jQ2ihKEEXWSAkcxzKMyGm1jOMBuPzA43Rm0+/cT/3Jb6V7v/bc4H9teR6fW94P98/cd5+0+fTOnRtv3JC88O83EEIIF95ECH6J86gKaRDSMgLncnGsQgEgaFmOZT5ou6SklTRtFqS3YMem7Gj97+fhnoWF8N5Y625pFOeXF65eRYhCLEK4CeeRBpnJtaAVeINep1AwjEH+n6UEPhoJu9i1C/bkC3P7fRkHCD29x4faZmc3dQ9s3nd49mCu/06cH+j1d/kraVU61j/jh6O9YoBf/rg7yycIbkCthSUcwOeRFaEKu8sVCSexwBuMjMvF2tVYrzMYBD4qGhUKsA/uibZsOpGNja6LaqOutrlOh30g7s40sY4ZVebuody5u3pFr6eJS+y4uz0+E2laz1sDRBvCA0dlbbRljFhO4KMrDP7fgw9NPHlocnLieGb39ijOn7rnrh/t7Njw6NaZ+SJOEqMO51E1iWBjbIzAsIyNYU/C3hrpA+9n6k8EcKlxPv3Lzs87y9ZXla2nSqsDn9V82o7z6Q87pV+txJ5fiS1QNq1AsVobxZ4cioE7ljs5lJLeSeK8dAP0ywsQky4X70FLOI+o4j3syaGTOL+8sIIVHsF5VFGKx7Anh46Crgbnly+sYHsZ55FJ/l1rFER5x2hUZBmKpYhvGIo9OdNqoHsuzZwczFaZVfTwq/6EgVaoKwdwXvrL06dh2/ICHPbv9T0iPQPTj/jn/dLZUuxdOI+0K7GjUTn6atShR720Qq3sHjyZO+ejFbXKHpyXph8MHRBgenkBnn5I2MtLT8rPrb2whGfxeVSHmmR3lMxh0OvUmOOTmDy7oknAevBIcPJIz8DOcHDyzkxkY9I+MEQ++1WPHR/MH+nuOjY++PCR7kz7tiOtW4/Etx1p23J01RsBWXtduTdYSrtm74vThwe+tmE+nJ7buTfbtxPnByZHdoekL6F3ZLhVQCWsszLWWuRHyHkTOKPdxa06WwbPrLga2DKoX4zfYxrfWKLhGzrQqZkI166vqbBF4tuPthVRbzv6q+yI9lv7Spz6vnm4X+Hz0VSiusSFw3lUgwxrXBgtS93E5kfTtx8cv2N8/2Gxa/vsjsG+LTjfM775oEb6AAzSxzAx1hNtJpwAqQpLIOHzyIsQ4SDKqCNhFyfTiUZXE1WhIDSNxQrxUWbB3WqZENtHA86sNx6Zjse3WAVTT9AZsYQc2eZwfJeqrc3n47tiDt4QNPeL/BgfdgcbPdaW9a5mQ6ChV2zbHEaAZhDCEZxHDGHDijaGpZ498koNvFnzkyM4l8ksv1TEOVxYkj1nKLlEdhyBREQmlwpo3LFPQQ8MDVZ1dMc26UezYw0PqOZ36ZtNsCA9GLD35Kb3wSPSvrP3kHhjCOG0rCMSKEFrMJRcDA/Fh9dXVFK0KWL+uw3SczgvnYsciEYOhWG/nHoI0BxClB/nkY1gJlszxXu1Bp2+FIWlwlFRzoa5qhElRdG0scXwTG8V0Dqf7mxOWtzOYKDVNs1LOC89Ft4fiewPw7z0WHhfNLovDPPLC/CwY5jjspx0iPAvFBDClmKtYUWwiTYGbAwo4TnpbTU8qJQ2wWBtM25KB5f/s5N4lSsswZewiHTEMcbVvDIKokCxBBnHR0VxtQK/1JH1D8wKXEJDa5NbU5U0O1XvGnb49XyDIxOxhlSbJ3rumRbctoRk7nM2dwSbf+2ye/tn+JRc4zGyFpbgU3wZ6UkHJE5iGVYrMEQZgb85m+U+8zGX0FC61NkcZ8CODQF5+4gjE2ls8dhH2aBOULltCXz5lS0W36ZJsnWHt39GSCa8zo9cdgTIWViCC7CIGm5it+bUUkd5Z3iHP7c14m83BLQuS8tktLWtKWqwm3OqXTNdd0w0200tRn3XQqazx6zhdc4iF66whLkyLmva/d/itdVTda5cvqTekPNW9bimuVeWY7fKh2UuP4FFZEbO8v1IpjE2xWp3pIQoqVaE4YeT84HB6RYx3aiqkF6vasp4La3GRsvodwuYqvewkVnV3q3dC2P+4AjfIKhTI06TRtBbwVm9rqYhZJ1AgHwIwUP4bWQkHmZTuDzTGdL4KN9EqjpdVzuUMHvr1yvXa2yeSs021fYJ+H5rxejAeE21yCh533hSmiKaQcEBi7CIrChYXklEUaFgyxUk6ULdpN7zoUnW0dDtTg6oTa4NzYkRX/90yJXUUNrULu0dreyo3WcINbBpobH5P1yWiNGe7djj8k9OZO68jSd+pOZ2gc3n/ReX3dMz1RKPk2cIZNaAd/DlUv9b8yEjN8FImNiQsp7NtdTRnjF/MlKZzLbTdF9DX7AbX76RYJvTMatDugJ+3bqaQW9Q+n6hQGKiP+ML2IV6EUIK1NeHECoUCl8vcOgL+fv+4vfdaxj+iC8jlYyBIji0LMcw1rO5LfhPU68dGZpZMOPLkgXgTel3fzx8DAHyF5bQn/FlVE9UjITlKqfQ60oWOJBWHMudANBQCgaUBlVKY8L7lh9mqqh6wHGaXt0XfwyLpKaTPYvUjSUBFDcpUC7G1hRDu8ZdbaGK5ilnIkrTyVyCpnv1ff5uok2Poc/XDdf7HSHR7RfSMU2jrlyftatV7u/AIlpXjuFW+cmOnrHgTerLO9wq/mpewruwiGqRpTxPSLflSmNeMfnfHp71D8zyw3P+wVlvYFSI8uRDtWdz9x0TweJnR+dCV2dvZqGrs4fELnxeEOBTWCzmPFOGWI1ZuZox2pvql/JMSkE5J4Jy4eJd7Vpcb/2b8vp1Fb/UYQ2UEt+650mAUgFz/d5pW/PHcVhEdWUaGRnXijbVtCUbMOnX15kdWWsCrs/4E1Vdlam4dBVB4avCEpyARcTd2rdvbdukaxeb9tOhGVOLscPlTXhiwVZ/vz840BDUCjZXKNqUDLeMqcJul9UdZM2c1Zz0+NJOR6NbZw5YG1319nZ/oMtJMLcXlmAK71+tu1FRy6awIFeMsrp7sSNMQ2tvddaRXn9MdaKVarCrzdWaumZVKlBrroH61opvfCMpfVxf39iorBCZWhI7VliCT+A6Mq3FXnO/tlR6n191Zp+l19+dJc3KvUHVKWqsWohKb2tNxDIwJZkHWHluAxRHCN6D6/+71z/Qm3XQCprWOLTfyknLcF36iB1kHf0OMEnm4r09COE34Dqy3XLv2hXFUsVzGEPNs9k6AKBr19fdP6jBpMOb6+7r++2cWv7WUnsUrkvv27vs9i47NJZdmUHJ9jkcfaz0OYLC2wjBvxV1YLWcYCxtJQqMkS2d+RjG/5vNQ95KNUPXNtVOjF/ePuyv1CjpOrt2FvCH+w2cXufR7//vzw4bggaD33gHmSFeKzTDB3AdmRFi5FmP6CrepIgaK5RNalN9vTNtqh/PusgkpHHWfzMrvW+K9/0rw7RWJXgWPpI+seVYNmsHzfJnzTk/0Qojb2EJfoHPIA1Ry7h20ru5/ctF/zLf6/T2b4nwPQ5P/1yIy4Qt/qD8qYptT972V8d727YnNz11rCfRdfvprszG7ttPd3VuRECww/34XvkcJZKJMSoKlMCYa/7/ltuVE2L8zgdUHXCNV9mXX+sgnD9HCF7HZ8h9rJikSgnMrSY3Y2OUlVvOzjYLkaa0nfNvbBmb8o4dHwedKjh6bNttQX+7zdri8tzWFZndstDXSWJ+UViCn+MzyH1L7rHiahViuJVqqy8m3z+kdzYKxoFQ18YNO1XDmzlesGQs3PjMyMbBgUg8Ma9KB9z28GCr0NnmSTR6ow1GITXSmZjW05o+PnFbiOhLkuQqvhcpkQ4hGyvaRCDcWacgknOdQsHAYB8r/aEKZjeMjKvGpcI/uRT1DK1z614Mw+PSQjL5j5a0rSG8jjwvQKiwBO/ie1FTOY9VAlobwzIlnRSKl9OzFt6Qjnn7/Kmw1d9kGwFfzR/CGq+pby5zUJUKeGxhb05IttdpzBDofLlSNTGePUSGQ4yEwhLcwGeK5yZRV76LQlfmk2LtU6xteizOu9pZgTcNO2A+OuILjBzoiHTrwvZ2fmNKbdtg650Q5650TzQPuMW0vbna+H5sa2rb03d1hpo8bZljG1yOqaHkXuIDNI8QrsD3yr04iUUyQKsxc7dl4NCodEUNZ5Xbj2aMd7/xw5FOfublnx1ACFHIVliC3+AzyIp8qHXF0dGoGFmtsUQaRt+ICVjtCim9zkAVdXRxpHoZrgU3xnxdXENjeCPv6Q/2iDp3Q/tWi7M95vX3JBsdHW5PhuM7+1WO/lhoIKKhG+KcmPM2pfmOSStd44nZ28YDsHPdAN8cjkf4uPRjS8ztFDz6hsGYWJq/6wpL8MaKxlpZYzEaLrVE7Uq2R1fGsRX0avxQmF83wkKcd7Y76sLdunBTkp9M1djGbT0T4mxcHCaqww+L+qqI1pK1xUbkHXOyU0Op+Q5xW2rrM3d1EhyAjIUldBrtJ/lZrOFF//QYTFyDYZ1T1WAw+y0Gk5+sZdE1UIKJvN8QRYFhVe/WXFuZ31j0Hr4GxuJvNoatxi9WvxeNknkLDYMK/RS+jhnUimJAzAyosrAHZvDr5Bxp1JJmJDCVP3iOuf27C9XfoaYDX0nkNRGCwj8X9oCruI6R64dAhZSHnliofP4H3wlQOPDVM8V1f1/YAn+Nf0b2Z0CAPrgQk3JPUbu+elz+HZ2AZ+Ev8M+RGiEtJ3KiUTQyopExMtyLTd1T9dtN/srdzG6XOwwXLFMht20vvU/ts241TiFMZiI5H9aTKUkQWbH4JzDyH8OSZsqwIstoBZF1pYdrxoIj6g1xoe1EXGgbVo8FR9UTHeH0vR2j9wXvuyo+Kl68ePGi+Kh49epVoB8t4mtBu+EK9pLnIEbYiBAR9IKe1V/72xfaX3hx9xutly61vkHWpdEp+DFWy+tWeBgZbt597pz73DnPt7/tOXfK88QTbvmf57wcO4hOwRWsJmdRpzPi1DOM3miEK9IOOP/miRNvnnq27XvpkRY6NCzjOAVvFdeKEVGMcFykQt/y1vHjb8H5U53DIbplJP29tiJmXeFTnMQVZG0FJ9oiNk4EPcS4S1IH/PQSB4o676upV73SlxWr8xO6CtdX3o9Zt+a2wXW5cQPqxYPoAr5AeGnLfHi3tpE16iwsHjQaTLZ1BlMTAnl+/wVcR7UrfXHtpULIyGpMSl1dg015KHdInfm1sqpVwYR82LH8257J/wEAAP//AwDEm6eYAAABAAAAARhR2/kAVV8PPPUAAQPoAAAAANhdoMwAAAAA3WYvN/69/t0IHQPJAAIAAwACAAAAAAAAAAEAAAPY/u8AAAhA/r39vAgdA+gAwv/RAAAAAAAAAAAAAABKeJwEwM8rw3Ecx/Hn672LQlbUZpdP+uxHmbRyId+LAzsOyU2upJxcdnDbX8Df4eTiOFyU4uKilLc/YEtLm7T28bALyjyBJunZmkSrsmG7RI2IeifaOZExUS9EuyfaGdHaZFYlWpvM6kT9MaMJR3ZCS9/s2w/HRkq2SM2KBN1SsQI1fVFRibrNI5sm0CPQTx19EPhlJRcINkuwHDUrpKEOCbpKY22TWZ51ddm0R3Z0k97UTQ9yluWU5GkoTyM5c3KQsybnVM6SnDwDCqoTcyIyoKUyUyqnVx2kO11zqU+KchpytuSsymnYHgv0CECTfur8AwAA//8DAFFqSugAAAAALgAuAFIAigC8AN4A9gEMASYBNAFEAXIBmAHKAe4CMAJYApgCrALUAvIDLANEA3wDtAPiBBoEVAR8BMQE7gT6BQYFIAVCBYQFrgXcBhYGNAZwBp4GygboByIHTgd+B7AHyAfyCC4IVgiKCMwI5gk8CYAJlgmkCbIJvAnQCeQJ9AoSCkQKWApyCogKngq2CsQK2gr4AAAAAQAAAEoAjAAMAGYABwABAAAAAAAAAAAAAAAAAAQAA3icnJTdbhpXFIU/YqBN/y4qK3JurHOZSs7gRnGUxFfjOlZGRZAypD9SVWmAMSBgZsQMOM4T9Lpv0bfIVR+jT1H1utqbDWEiq1ZQFGsNZ/+ss/baB9jnX/aoVO8Cf9WXhisc1n82fIcv6k3De5zVPzNc5aj2t+Eag9pbw3Ue1DqGP+Fd9Q/Dn/K4+pvhuxxULwx/zqPqvuEv9xz/GP6Kx7xb4Qo85XfDFQ7IDN9hn18N73EPq1mpco9jwzW+5tBwnUOgy5iCKWMShjguGTNkwZyYnJCYOWMuiRngCPCZUuivCZEix/DGXyNCCuZEWnFEgWNKyJSInJFVfKtZKa+0o/SZK5JuPgUjInqaMSEiwZEyJCUhZqJ1CgoyntOgQU5f+WYU5HjkjJnikTJnSIM2FzTpMmJMjuNCKwmzkJRLCq6ItL+zCFGmT0xCbqwWJAyUp1N+sWYHNHG0yTR2u3KzVOEIx4+aLdwkxvEtnv53W8zKfddsIpaqp2jYY6o8r3SCI1Vc+vr8oLjgOW4nfcpMbtdooOxk1mN6LHT+Mj/JEyYJzh3gE6qDQncfx5l+B4SqyE8EdHlJm9d09dunQwefFl0CXmhumw6O72jT4lwzAsWrswt1TItfcHxPoDFSOzZ9RHP5ekNm7hbu4gy5x4xMt0BmLPcX58c7TVh2KC25I1dX9HWPJFL2QFSRPYsYmisydcVMtVx7Izf9BuYIOS10tu/PZRuWtnvrLb4m1R12LIyTTG7F6Lapeh945kr/eUQMSOlpRJ+UGQ0KrvVur4hYMMVxrj5+qVtS4G9ypM+1uiRmpgwCEq0zJ9O/kfkmNO79ku+dvSWyeTPd0cnmVrt0kcrJ1oxeq3rrs9BUjrcm0LCpppYjE5bKq5uK9yXaK/EP1f25vm4pDwm0rkyyf+MrcMwzTjhlpF2kesJycyavhEScqgITYo2SN/ONavUIjxM8nnDCCc948oGWazbO+LgSn+3+Puec0eb01tusYtuc8aJU7f87/6lsj/U+joebr6c7T/PBR7j2G45K72ZHXwPZoKVVe78dLSJmwsUdbGvh7uP9BwAA//8DAHKhUUAAAAMAAP/1AAD/zgAyAAAAAAAAAAAAAAAAAAAAAAAAAAA=");
+}]]>
+.md p,.md ul,.md ol,.md dl,.md table,.md pre,.md details {
+                  margin-bottom: 0 !important;
+                }
+                .md li > p {
+                  margin-top: 0 !important;
+                }
+                .md li + li {
+                  margin-top: 0 !important;
+                }
+                .md ul,
+                .md ol {
+                  padding-left: 1.5em !important;
+                }
+              </style>
+              <style type="text/css">
+                <![CDATA[.shape {
+                  shape-rendering: geometricPrecision;
+                  stroke-linejoin: round;
+                }
+                .connection {
+                  stroke-linecap: round;
+                  stroke-linejoin: round;
+                }
+                .blend {
+                  mix-blend-mode: multiply;
+                  opacity: 0.5;
+                }
+
+                		.d2-2876619026 .fill-N2{fill:#676C7E;}
+                		.d2-2876619026 .fill-N7{fill:#FFFFFF;}
+                		.d2-2876619026 .fill-B1{fill:#0D32B2;}
+                		.d2-2876619026 .fill-B2{fill:#0D32B2;}
+                		.d2-2876619026 .fill-B6{fill:#F7F8FE;}
+                		.d2-2876619026 .stroke-B1{stroke:#0D32B2;}
+                		.d2-2876619026 .stroke-B2{stroke:#0D32B2;}.appendix text.text{fill:#0A0F25}.md{--color-fg-default:#0A0F25;--color-fg-muted:#676C7E;--color-fg-subtle:#9499AB;--color-canvas-default:#FFFFFF;--color-canvas-subtle:#EEF1F8;--color-border-default:#0D32B2;--color-border-muted:#0D32B2;--color-neutral-muted:#EEF1F8;--color-accent-fg:#0D32B2;--color-accent-emphasis:#0D32B2;--color-attention-subtle:#676C7E;--color-danger-fg:red;}.light-code{display: block}.dark-code{display: none}]]>
+              </style>
+              <defs data-page-node-id="Hsu9mxjpRyhl6oCcFkoUf0">
+                <filter
+                  id="shadow-filter"
+                  width="200%"
+                  height="200%"
+                  x="-50%"
+                  y="-50%"
+                  data-page-node-id="qMSjojTuRdHXjYS4WRfSA1"
+                >
+                  <feGaussianBlur
+                    stdDeviation="1.7 "
+                    in="SourceGraphic"
+                    data-page-node-id="0DfGgG8EgEuauH0R7LvXbV"
+                  ></feGaussianBlur>
+                  <feFlood
+                    flood-color="#3d4574"
+                    flood-opacity="0.4"
+                    result="ShadowFeFlood"
+                    in="SourceGraphic"
+                    data-page-node-id="j2GeXf1V4DPJXM19WtCoy6"
+                  ></feFlood>
+                  <feComposite
+                    in="ShadowFeFlood"
+                    in2="SourceAlpha"
+                    operator="in"
+                    result="ShadowFeComposite"
+                    data-page-node-id="nLtHODIBeIvvA9sz4qTFE4"
+                  ></feComposite>
+                  <feOffset
+                    dx="3"
+                    dy="5"
+                    result="ShadowFeOffset"
+                    in="ShadowFeComposite"
+                    data-page-node-id="pBhBqlxyd7NjGSZQQQLZP7"
+                  ></feOffset>
+                  <feBlend
+                    in="SourceGraphic"
+                    in2="ShadowFeOffset"
+                    mode="normal"
+                    result="ShadowFeBlend"
+                    data-page-node-id="omDnDElUTpyR3C9d4mxe6A"
+                  ></feBlend>
+                </filter>
+              </defs>
+              <g class="dGl0bGU=" data-page-node-id="clJiQEUwYvCnfcKxarcSog">
+                <g class="shape" data-page-node-id="mht8BAyEx3FQgc3YZAo3BV"></g>
+                <text
+                  x="398"
+                  y="28"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 28px"
+                  data-page-node-id="7TQm6iabNcWYVyxd5UUqjJ"
+                >
+                  SupTrack 分层架构（v0.2.0 · 前端即全栈 · 纯本地离线）
+                </text>
+              </g>
+              <g class="Ym9keQ==" data-page-node-id="tDwqSxvIFc9zvrC9ASoknj">
+                <g class="shape" data-page-node-id="wVRDbmWzh64EGCp3zmuTuv">
+                  <rect
+                    x="0"
+                    y="56"
+                    width="6033"
+                    height="2424"
+                    stroke="transparent"
+                    fill="transparent"
+                    style="stroke-width: 2"
+                    data-page-node-id="BpuD55DPOM1Gt2ETgGsH9O"
+                  />
+                </g>
+              </g>
+              <g class="bm90ZQ==" data-page-node-id="Q1Pmw90IbJKrjVHafKhBVg">
+                <g class="shape" data-page-node-id="cSmBqn5uP2V5EERjDHoFN3"></g>
+                <svg
+                  x="0"
+                  y="2500"
+                  width="872"
+                  height="163"
+                  viewBox="0 0 872 163"
+                  overflow="hidden"
+                  data-page-node-id="OfX8HGS975a6Kc2sW2qRsV"
+                >
+                  <g class="md md-native" data-page-node-id="pyfC4BCRDoTZboZ1pcPDbi">
+                    <text
+                      x="0.000"
+                      y="23.000"
+                      class="md-text text-semibold"
+                      fill="#000000"
+                      font-size="24.000"
+                      xml:space="preserve"
+                      data-page-node-id="EfS0Pmr4rWsGN45JON5CMY"
+                    >
+                      支撑设施（零依赖边）
+                    </text>
+                    <rect
+                      x="0.000"
+                      y="37.000"
+                      width="872.000"
+                      height="1.000"
+                      rx="0.000"
+                      class="fill-B2"
+                      fill="#0D32B2"
+                      data-page-node-id="ksSWapPRmpjqhhKkkoyLB0"
+                    />
+                    <rect
+                      x="15.000"
+                      y="65.200"
+                      width="5.000"
+                      height="5.000"
+                      rx="2.500"
+                      fill="#000000"
+                      data-page-node-id="3eqMOIPnQ6H1jMfxJJxWMR"
+                    />
+                    <text
+                      x="32.000"
+                      y="72.200"
+                      class="md-text text-bold"
+                      fill="#000000"
+                      font-size="16.000"
+                      xml:space="preserve"
+                      data-page-node-id="xuVt2Tolv6uj7wpjSJtscg"
+                    >
+                      PWA
+                    </text>
+                    <text
+                      x="63.719"
+                      y="72.200"
+                      class="md-text text"
+                      fill="#000000"
+                      font-size="16.000"
+                      xml:space="preserve"
+                      data-page-node-id="VQLK6dpwfSvnazEAUMVVR8"
+                    >
+                      ：public/sw.js + Service Worker
+                      注册，离线可用；新版本就绪等用户确认后再接管，避免打卡被打断
+                    </text>
+                    <rect
+                      x="15.000"
+                      y="93.200"
+                      width="5.000"
+                      height="5.000"
+                      rx="2.500"
+                      fill="#000000"
+                      data-page-node-id="DcoqOq6gFuHPGZNug9ZGiC"
+                    />
+                    <text
+                      x="32.000"
+                      y="100.200"
+                      class="md-text text-bold"
+                      fill="#000000"
+                      font-size="16.000"
+                      xml:space="preserve"
+                      data-page-node-id="veVifWecuuhatnxi5dDIn3"
+                    >
+                      测试
+                    </text>
+                    <text
+                      x="64.000"
+                      y="100.200"
+                      class="md-text text"
+                      fill="#000000"
+                      font-size="16.000"
+                      xml:space="preserve"
+                      data-page-node-id="4BRmc0dB3NjTTxOp4iLviE"
+                    >
+                      ：Vitest（node + fake-indexeddb），src/test 覆盖 schema / repository / service
+                      三层
+                    </text>
+                    <rect
+                      x="15.000"
+                      y="121.200"
+                      width="5.000"
+                      height="5.000"
+                      rx="2.500"
+                      fill="#000000"
+                      data-page-node-id="wDcBS6p5hFL1bWN41hicL0"
+                    />
+                    <text
+                      x="32.000"
+                      y="128.200"
+                      class="md-text text-bold"
+                      fill="#000000"
+                      font-size="16.000"
+                      xml:space="preserve"
+                      data-page-node-id="1heUxshtmmG2i1XFg1sDFT"
+                    >
+                      构建
+                    </text>
+                    <text
+                      x="64.000"
+                      y="128.200"
+                      class="md-text text"
+                      fill="#000000"
+                      font-size="16.000"
+                      xml:space="preserve"
+                      data-page-node-id="1wFgbMUYpNMaSMqIa4HKQB"
+                    >
+                      ：Vite 7，产物按 radix / icons / dexie / react 分包；ESLint + Prettier + Husky
+                      + lint-staged 守规范
+                    </text>
+                    <rect
+                      x="15.000"
+                      y="149.200"
+                      width="5.000"
+                      height="5.000"
+                      rx="2.500"
+                      fill="#000000"
+                      data-page-node-id="YeXaHbbGsorc84MAPxZ3So"
+                    />
+                    <text
+                      x="32.000"
+                      y="156.200"
+                      class="md-text text-bold"
+                      fill="#000000"
+                      font-size="16.000"
+                      xml:space="preserve"
+                      data-page-node-id="BTwjc6IueQPzeCjM0TpOil"
+                    >
+                      依赖纪律
+                    </text>
+                    <text
+                      x="96.000"
+                      y="156.200"
+                      class="md-text text"
+                      fill="#000000"
+                      font-size="16.000"
+                      xml:space="preserve"
+                      data-page-node-id="vwgKzinHVDr4NMz7szd6jc"
+                    >
+                      ：hooks → services → repositories → Dexie 严格单向向下，无反向依赖、无跨层跳级
+                    </text>
+                  </g>
+                </svg>
+              </g>
+              <g class="Ym9keS5zdGFjaw==" data-page-node-id="GoejOR3CmD8mSe2VHoA5M7">
+                <g class="shape" data-page-node-id="IsBUfwA4hOvveDqBOGZH67">
+                  <rect
+                    x="60"
+                    y="212"
+                    width="4489"
+                    height="2208"
+                    stroke="transparent"
+                    fill="transparent"
+                    style="stroke-width: 2"
+                    data-page-node-id="P2qqw9hnDbaWXHFEASjRI8"
+                  />
+                </g>
+              </g>
+              <g class="Ym9keS51dGlsc19yYWls entity" data-page-node-id="MQMJOCcr6uTZiJhY2sqB2H">
+                <g
+                  class="shape"
+                  filter="url(#shadow-filter)"
+                  data-page-node-id="rlfmrMeHAT4ujKjWt9VGHK"
+                >
+                  <rect
+                    x="4699"
+                    y="116"
+                    width="1274"
+                    height="1390"
+                    rx="6"
+                    stroke="#E8ECF5"
+                    fill="#FFFFFF"
+                    style="stroke-width: 2"
+                    data-page-node-id="NOkfuLMzGXDreyOJE9CvIC"
+                  />
+                </g>
+                <text
+                  x="5336"
+                  y="145"
+                  fill="#333333"
+                  class="text"
+                  style="text-anchor: middle; font-size: 24px"
+                  data-page-node-id="NUfhg1NzYXYeWN8B8DuN5A"
+                >
+                  横切层 · 纯函数领域逻辑（utils）—— 只 import types / constants，可被单独单测，被
+                  services 与 hooks 调用
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MMV9ib290c3RyYXA= zone_1"
+                data-page-node-id="hWxin8Sx24tuy0C5DfnFW8"
+              >
+                <g class="shape" data-page-node-id="bTMAHNhE6c2z1VhEpDhckm">
+                  <rect
+                    x="120"
+                    y="272"
+                    width="441"
+                    height="508"
+                    rx="8"
+                    stroke="#4E81FF"
+                    fill="#F1F5FF"
+                    style="stroke-width: 2"
+                    data-page-node-id="pcuDk1HzXadjpwKqcjuAGq"
+                  />
+                </g>
+                <text
+                  x="340.5"
+                  y="297"
+                  fill="#333333"
+                  class="text"
+                  style="text-anchor: middle; font-size: 20px"
+                  data-page-node-id="BRZum3a3YDKsEJMGIHbMMr"
+                >
+                  第 1 层 · 应用入口与外壳（bootstrap）
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MMl9wcmVzZW50YXRpb24= zone_2"
+                data-page-node-id="56pLP5LaPISLzJZIiahvCo"
+              >
+                <g class="shape" data-page-node-id="IOJieAIfhH1oKL37mGbzxF">
+                  <rect
+                    x="3742"
+                    y="958"
+                    width="747"
+                    height="902"
+                    rx="8"
+                    stroke="#4E81FF"
+                    fill="#F3F7FF"
+                    style="stroke-width: 2"
+                    data-page-node-id="HPsoVoHvFDRrEwO5X5gYV9"
+                  />
+                </g>
+                <text
+                  x="4115.5"
+                  y="983"
+                  fill="#333333"
+                  class="text"
+                  style="text-anchor: middle; font-size: 20px"
+                  data-page-node-id="PTOGK6wetygxRt7K7VqbZB"
+                >
+                  第 2 层 · 布局与 UI 组件层（presentation · 不直接查库、不判业务状态）
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MM19ob29rcw== zone_3"
+                data-page-node-id="z7MpJOBVYOWHJ9EDuljYAG"
+              >
+                <g class="shape" data-page-node-id="mvcXX8hsKo4s3MRO8yPCFB">
+                  <rect
+                    x="120"
+                    y="1772"
+                    width="1708"
+                    height="588"
+                    rx="8"
+                    stroke="#4E81FF"
+                    fill="#F6F9FF"
+                    style="stroke-width: 2"
+                    data-page-node-id="olcy8hBPS5aGCHqGRvFBrt"
+                  />
+                </g>
+                <text
+                  x="974"
+                  y="1797"
+                  fill="#333333"
+                  class="text"
+                  style="text-anchor: middle; font-size: 20px"
+                  data-page-node-id="bU8Jw6vH1pEf0VOaRQKE5i"
+                >
+                  第 3 层 · 状态订阅与派生层（hooks + stores · 只做取材→纯函数推导）
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MNF9zZXJ2aWNlX3JlcG8= zone_4"
+                data-page-node-id="sRZRofoAqtU08DdF5VicRf"
+              >
+                <g class="shape" data-page-node-id="rPmwRL9a8kPhVLATpLBMet">
+                  <rect
+                    x="2451"
+                    y="272"
+                    width="1141"
+                    height="1704"
+                    rx="8"
+                    stroke="#4E81FF"
+                    fill="#F9FBFF"
+                    style="stroke-width: 2"
+                    data-page-node-id="70gFK8JLXnuaODjAM4aM6Q"
+                  />
+                </g>
+                <text
+                  x="3021.5"
+                  y="297"
+                  fill="#333333"
+                  class="text"
+                  style="text-anchor: middle; font-size: 20px"
+                  data-page-node-id="pbQHzr19eEWkxYpPCO0AHy"
+                >
+                  第 4 层 · 领域服务与仓储层（service + repository · 业务规则与事务边界所在）
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MNV9wZXJzaXN0ZW5jZQ== zone_5"
+                data-page-node-id="2z5xI4beJ5XIESXV2MBPSv"
+              >
+                <g class="shape" data-page-node-id="C5GrYWqcI40hs1ILJ8SRpK">
+                  <rect
+                    x="1223"
+                    y="694"
+                    width="1078"
+                    height="936"
+                    rx="8"
+                    stroke="#4E81FF"
+                    fill="#FCFDFF"
+                    style="stroke-width: 2"
+                    data-page-node-id="Pd0ceqEkgCmc603exbq1Dm"
+                  />
+                </g>
+                <text
+                  x="1762"
+                  y="719"
+                  fill="#333333"
+                  class="text"
+                  style="text-anchor: middle; font-size: 20px"
+                  data-page-node-id="hEGaFQPuZJwm22siubk7AH"
+                >
+                  第 5 层 · 数据持久化与领域模型（persistence + domain）
+                </text>
+              </g>
+              <g
+                class="Ym9keS51dGlsc19yYWlsLnV0aWxzL2RheVN0YXRl accent_1"
+                data-page-node-id="jbKNJuEMyEMcAA7N5rsVNH"
+              >
+                <g
+                  class="shape"
+                  filter="url(#shadow-filter)"
+                  data-page-node-id="LARLlF4FZNn4rZtTBO2iFK"
+                >
+                  <rect
+                    x="5156"
+                    y="176"
+                    width="359"
+                    height="114"
+                    rx="6"
+                    stroke="#E8912D"
+                    fill="#FCEEE0"
+                    style="stroke-width: 2"
+                    data-page-node-id="PqGlAtBUbuWF52YYmJS8qh"
+                  />
+                </g>
+                <text
+                  x="5335.5"
+                  y="214.5"
+                  fill="#333333"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="czCMobX2thjOnOhU8U3qDK"
+                >
+                  <tspan x="5335.5" dy="0" data-page-node-id="2MKEcAwFW58rT2Xa28wAnB">
+                    utils/dayState ★判定核心 — 四态
+                  </tspan>
+                  <tspan x="5335.5" dy="17.25" data-page-node-id="lU4GRWjjHfX3EiBvs2ilJ4">
+                    判定（已服 &gt; 停用 &gt; 休息 &gt; 待服
+                  </tspan>
+                  <tspan x="5335.5" dy="17.25" data-page-node-id="QgwRvdFGJJMWtC13qqyzeA">
+                    ）+ 日级状态推导；今日页与日历页
+                  </tspan>
+                  <tspan x="5335.5" dy="17.25" data-page-node-id="Hjy6OxWdgoAEoZtF1F30mA">
+                    共用，永不各说各话
+                  </tspan>
+                </text>
+              </g>
+              <g
+                class="Ym9keS51dGlsc19yYWlsLnV0aWxzL3JhdGU="
+                data-page-node-id="BqarGqFaAY3COEaokdUwL6"
+              >
+                <g class="shape" data-page-node-id="uo5WMrnKfRWK0ZgJJQ6bUw">
+                  <rect
+                    x="5156"
+                    y="330"
+                    width="359"
+                    height="98"
+                    stroke="#0D32B2"
+                    fill="#F7F8FE"
+                    class="stroke-B1 fill-B6"
+                    style="stroke-width: 2"
+                    data-page-node-id="qG1HtgdraVsDjVDmSRJP7B"
+                  />
+                </g>
+                <text
+                  x="5335.5"
+                  y="368.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="1bNQ1VB8FPIHmRZxBqR1aI"
+                >
+                  <tspan x="5335.5" dy="0" data-page-node-id="4p7V5FRtNDgK43ebV9OK1G">
+                    utils/rate — 节奏匹配（每日
+                  </tspan>
+                  <tspan x="5335.5" dy="17.666667" data-page-node-id="DVc0klHIH8UJqu8kn1jlLf">
+                    / 循环 N 吃 M 休）、下次应服日
+                  </tspan>
+                  <tspan x="5335.5" dy="17.666667" data-page-node-id="MWTeYg6v9QRVtXpR7cKJwk">
+                    、日均密度
+                  </tspan>
+                </text>
+              </g>
+              <g
+                class="Ym9keS51dGlsc19yYWlsLnV0aWxzL3BhdXNl"
+                data-page-node-id="rT8rbWvWyQphVDKewmhHAE"
+              >
+                <g class="shape" data-page-node-id="qtWN105YaWTTCFKoDixYuO">
+                  <rect
+                    x="5156"
+                    y="468"
+                    width="359"
+                    height="82"
+                    stroke="#0D32B2"
+                    fill="#F7F8FE"
+                    class="stroke-B1 fill-B6"
+                    style="stroke-width: 2"
+                    data-page-node-id="46ksyhxEfzVDyeW8TXbvyF"
+                  />
+                </g>
+                <text
+                  x="5335.5"
+                  y="506.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="865FWv2gFPtrQvqC97OHOt"
+                >
+                  <tspan x="5335.5" dy="0" data-page-node-id="GFf097WuB236irf3YiQ5SM">
+                    utils/pause — 停药区间与方
+                  </tspan>
+                  <tspan x="5335.5" dy="18.5" data-page-node-id="mafsYtzULO7DXiF0FPMNiH">
+                    案组命中、周期进度
+                  </tspan>
+                </text>
+              </g>
+              <g
+                class="Ym9keS51dGlsc19yYWlsLnV0aWxzL3N0b2Nr"
+                data-page-node-id="eUYrdoelUOgVZFvXokUqM3"
+              >
+                <g class="shape" data-page-node-id="EvtgtiUJ9zdGHzqSYaLi1r">
+                  <rect
+                    x="5156"
+                    y="590"
+                    width="359"
+                    height="82"
+                    stroke="#0D32B2"
+                    fill="#F7F8FE"
+                    class="stroke-B1 fill-B6"
+                    style="stroke-width: 2"
+                    data-page-node-id="0N95feLG4lii7Hlc0ViMw6"
+                  />
+                </g>
+                <text
+                  x="5335.5"
+                  y="628.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="jy24wRd33uSBRUYrBP7mkw"
+                >
+                  <tspan x="5335.5" dy="0" data-page-node-id="96aJLwfzkXsL1Q0Fjnz0bh">
+                    utils/stock — 余量预警、预
+                  </tspan>
+                  <tspan x="5335.5" dy="18.5" data-page-node-id="wXaD9uKDfRi6651LqrRbY0">
+                    计可用天数
+                  </tspan>
+                </text>
+              </g>
+              <g
+                class="Ym9keS51dGlsc19yYWlsLnV0aWxzL3N1bW1hcnk="
+                data-page-node-id="JVfBsM0ij1sWKXmG2e4HsT"
+              >
+                <g class="shape" data-page-node-id="jliM7uHjlkzdmTMwHenclx">
+                  <rect
+                    x="5156"
+                    y="712"
+                    width="359"
+                    height="82"
+                    stroke="#0D32B2"
+                    fill="#F7F8FE"
+                    class="stroke-B1 fill-B6"
+                    style="stroke-width: 2"
+                    data-page-node-id="jg4RcYp6Eug3w9YfCJKAiv"
+                  />
+                </g>
+                <text
+                  x="5335.5"
+                  y="750.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="GBLdaFwJQUy2NZS6D7A1BX"
+                >
+                  <tspan x="5335.5" dy="0" data-page-node-id="hqTXxYytWDmJwoLMXsnrSa">
+                    utils/summary — 成分汇总与
+                  </tspan>
+                  <tspan x="5335.5" dy="18.5" data-page-node-id="5ScbsUypCBrdTlR5KrqutW">
+                    上限超限判定
+                  </tspan>
+                </text>
+              </g>
+              <g
+                class="Ym9keS51dGlsc19yYWlsLnV0aWxzL2NhbGVuZGFy"
+                data-page-node-id="WYoHfYmN23k1BDhoU4bHKu"
+              >
+                <g class="shape" data-page-node-id="1ohA1bBe8pdvhEndZEwkqQ">
+                  <rect
+                    x="5156"
+                    y="834"
+                    width="359"
+                    height="66"
+                    stroke="#0D32B2"
+                    fill="#F7F8FE"
+                    class="stroke-B1 fill-B6"
+                    style="stroke-width: 2"
+                    data-page-node-id="khDywHY5BZhJSx7INrB9cF"
+                  />
+                </g>
+                <text
+                  x="5335.5"
+                  y="872.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="AXjnVGyPUY9oMubRHeWkJ2"
+                >
+                  utils/calendar
+                </text>
+              </g>
+              <g
+                class="Ym9keS51dGlsc19yYWlsLnV0aWxzL2RhdGU="
+                data-page-node-id="BSVxT2GYimE2wd11tgUCAf"
+              >
+                <g class="shape" data-page-node-id="CdX4urqmOv9963f2euiubF">
+                  <rect
+                    x="5156"
+                    y="940"
+                    width="359"
+                    height="66"
+                    stroke="#0D32B2"
+                    fill="#F7F8FE"
+                    class="stroke-B1 fill-B6"
+                    style="stroke-width: 2"
+                    data-page-node-id="OWFuCGh5FzfKsC6jo8OFoU"
+                  />
+                </g>
+                <text
+                  x="5335.5"
+                  y="978.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="lNa34t3XtXkOf8qHAOWHnJ"
+                >
+                  utils/date
+                </text>
+              </g>
+              <g
+                class="Ym9keS51dGlsc19yYWlsLnV0aWxzL2lk"
+                data-page-node-id="G4SLLXbzFkPVCjCKUslI9T"
+              >
+                <g class="shape" data-page-node-id="VWq7FESNLNylsLhZDthix3">
+                  <rect
+                    x="5156"
+                    y="1046"
+                    width="359"
+                    height="66"
+                    stroke="#0D32B2"
+                    fill="#F7F8FE"
+                    class="stroke-B1 fill-B6"
+                    style="stroke-width: 2"
+                    data-page-node-id="Dy8os5RdrE7x6mFHEPyc4H"
+                  />
+                </g>
+                <text
+                  x="5335.5"
+                  y="1084.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="WqktVnz0qG4mNZ2P6y5BVf"
+                >
+                  utils/id
+                </text>
+              </g>
+              <g
+                class="Ym9keS51dGlsc19yYWlsLnV0aWxzL3VuaXQ="
+                data-page-node-id="Lf2LBVGugIgsJIz0WPCNM1"
+              >
+                <g class="shape" data-page-node-id="pusCufHL7eJrELijEZl7C6">
+                  <rect
+                    x="5156"
+                    y="1152"
+                    width="359"
+                    height="66"
+                    stroke="#0D32B2"
+                    fill="#F7F8FE"
+                    class="stroke-B1 fill-B6"
+                    style="stroke-width: 2"
+                    data-page-node-id="GGBG8t5tfmu1nl5JBnvtpm"
+                  />
+                </g>
+                <text
+                  x="5335.5"
+                  y="1190.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="pz7QduhfUS5xReMSEg3EqW"
+                >
+                  utils/unit
+                </text>
+              </g>
+              <g
+                class="Ym9keS51dGlsc19yYWlsLnV0aWxzL2Jyb2FkY2FzdA=="
+                data-page-node-id="vhL7Yx6VQh9NHn3dKyKovw"
+              >
+                <g class="shape" data-page-node-id="H0WtZYvdf5pQNBCCBbTsdw">
+                  <rect
+                    x="5156"
+                    y="1258"
+                    width="359"
+                    height="82"
+                    stroke="#0D32B2"
+                    fill="#F7F8FE"
+                    class="stroke-B1 fill-B6"
+                    style="stroke-width: 2"
+                    data-page-node-id="ys09opqMn9UXRZfXHcc5RT"
+                  />
+                </g>
+                <text
+                  x="5335.5"
+                  y="1296.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="SmK77JXpQ5nE2hi0se6D3b"
+                >
+                  <tspan x="5335.5" dy="0" data-page-node-id="maEJ8Dya0wEYyfcm9YYF0H">
+                    utils/broadcast —
+                  </tspan>
+                  <tspan x="5335.5" dy="18.5" data-page-node-id="nctKGbkkMRB6e7yeOXvp2V">
+                    publishDataChange 广播
+                  </tspan>
+                </text>
+              </g>
+              <g
+                class="Ym9keS51dGlsc19yYWlsLnV0aWxzL2ludGFrZUZhY3Rvcnk="
+                data-page-node-id="5sR0Duq47Jtb1T0heAh0Wt"
+              >
+                <g class="shape" data-page-node-id="YOMYXdLEuw3cSG2lhLfpxD">
+                  <rect
+                    x="5156"
+                    y="1380"
+                    width="359"
+                    height="66"
+                    stroke="#0D32B2"
+                    fill="#F7F8FE"
+                    class="stroke-B1 fill-B6"
+                    style="stroke-width: 2"
+                    data-page-node-id="8M4UknEQVGrV29EnnW8ImZ"
+                  />
+                </g>
+                <text
+                  x="5335.5"
+                  y="1418.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="THSCzOo1D57UnqfCwd2TbD"
+                >
+                  utils/intakeFactory
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MMV9ib290c3RyYXAuJiMzNDttYWluLnRzeCYjMzQ7"
+                data-page-node-id="qaZpmzMH0K0l2Sk41flmkC"
+              >
+                <g class="shape" data-page-node-id="vIb3ENLMAO9biaQD98Jpit">
+                  <rect
+                    x="180"
+                    y="332"
+                    width="321"
+                    height="98"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="HkfWjDN7ZwZroAnnT3yER6"
+                  />
+                </g>
+                <text
+                  x="340.5"
+                  y="370.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="CGftI28Euq5aPsWV0134Sc"
+                >
+                  <tspan x="340.5" dy="0" data-page-node-id="rW23DQmf8Qgbn7KBtzfw7n">
+                    main.tsx — 异步 bootstrap：元数
+                  </tspan>
+                  <tspan x="340.5" dy="17.666667" data-page-node-id="ymYMJezn9CJ5TsmW4Uhvdf">
+                    据默认值 → 写版本号 → 注册 SW
+                  </tspan>
+                  <tspan x="340.5" dy="17.666667" data-page-node-id="f5jCuDaR9NwTJqGtmiCTGD">
+                    → 挂载根节点（唯一启动闸门）
+                  </tspan>
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MMV9ib290c3RyYXAuJiMzNDtBcHAudHN4JiMzNDs="
+                data-page-node-id="eyb0ji2dHsQNxcmtilOaKJ"
+              >
+                <g class="shape" data-page-node-id="FFsEDXy54fzdUz4sKUKcyk">
+                  <rect
+                    x="180"
+                    y="450"
+                    width="282"
+                    height="82"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="QlnsGyoAGP7HHg2eC2xJIu"
+                  />
+                </g>
+                <text
+                  x="321"
+                  y="488.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="DdujT7e9ytFgBmUOuuRvyB"
+                >
+                  <tspan x="321" dy="0" data-page-node-id="i8qGTrtyolMOO7exuRsEu8">
+                    App.tsx — ErrorBoundary 顶层
+                  </tspan>
+                  <tspan x="321" dy="18.5" data-page-node-id="upwW40yqT6UxjBCVk0NQjo">
+                    组件，useRoutes 消费路由表
+                  </tspan>
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MMV9ib290c3RyYXAuJiMzNDtyb3V0ZXMvaW5kZXgudHN4JiMzNDs="
+                data-page-node-id="WYLTYldIUkdUI4IMrg0xho"
+              >
+                <g class="shape" data-page-node-id="SJA3acdz4taoYqr7IdRbLD">
+                  <rect
+                    x="180"
+                    y="552"
+                    width="298"
+                    height="82"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="eiF7BZbqmqWSUiDFI6PGx3"
+                  />
+                </g>
+                <text
+                  x="329"
+                  y="590.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="RSJydCpBgMHKFADEZLSPDB"
+                >
+                  <tspan x="329" dy="0" data-page-node-id="GUH5lKUNyOhnTfmXBMMtGo">
+                    routes/index.tsx — 路由表：6 页
+                  </tspan>
+                  <tspan x="329" dy="18.5" data-page-node-id="A0qPIpmjkTrFfA8ZpInLCX">
+                    面挂 AppShell 下（HashRouter）
+                  </tspan>
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MMV9ib290c3RyYXAuY29tcG9uZW50cy9FcnJvckJvdW5kYXJ5"
+                data-page-node-id="tz1xbrBqE3AOAEva12wnEL"
+              >
+                <g class="shape" data-page-node-id="RZAsPXxmGBxVvAzH2lLBlB">
+                  <rect
+                    x="180"
+                    y="654"
+                    width="308"
+                    height="66"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="mK4qbcwWVlLGlOGNtBK7xO"
+                  />
+                </g>
+                <text
+                  x="334"
+                  y="692.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="ROAwk9NrEV1rjAGcdOrUOJ"
+                >
+                  ErrorBoundary — 渲染期异常兜底
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MMl9wcmVzZW50YXRpb24uY29tcG9uZW50cy9sYXlvdXQvQXBwU2hlbGw="
+                data-page-node-id="oYuwOoW3BjPAzwfVaInSWL"
+              >
+                <g class="shape" data-page-node-id="fGZrvTxmbvxt1iugGIvYh5">
+                  <rect
+                    x="3802"
+                    y="1396"
+                    width="309"
+                    height="98"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="p5uyZDyn9LGYdHFE1wP0NZ"
+                  />
+                </g>
+                <text
+                  x="3956.5"
+                  y="1434.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="gLHmHlm0U4ArfGUIsIH6gQ"
+                >
+                  <tspan x="3956.5" dy="0" data-page-node-id="1DKbs49PdRGJFJHh1ECL76">
+                    AppShell — PC 侧栏 220px + 内
+                  </tspan>
+                  <tspan x="3956.5" dy="17.666667" data-page-node-id="kx547VmnELp3aAkg3DJXTo">
+                    容限宽 720px；窄屏 &lt;860px 收为
+                  </tspan>
+                  <tspan x="3956.5" dy="17.666667" data-page-node-id="uVoCoYs4SqEI24YyzabLkC">
+                    顶部下拉；含 OfflineBanner
+                  </tspan>
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MMl9wcmVzZW50YXRpb24ucGFnZXM= entity"
+                data-page-node-id="CoPxIOtVkCClVKJFKsUni3"
+              >
+                <g
+                  class="shape"
+                  filter="url(#shadow-filter)"
+                  data-page-node-id="DaDFxclFJT42LS9OuxpGbB"
+                >
+                  <rect
+                    x="3802"
+                    y="1018"
+                    width="336"
+                    height="358"
+                    rx="6"
+                    stroke="#E8ECF5"
+                    fill="#FFFFFF"
+                    style="stroke-width: 2"
+                    data-page-node-id="ZNBC5Iopwore59kTka8jml"
+                  />
+                </g>
+                <text
+                  x="3970"
+                  y="1039"
+                  fill="#333333"
+                  class="text"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="qjGMO3bYuzY0Ejy5oNkrFq"
+                >
+                  pages · 6 个页面（只渲染，不判状态）
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MMl9wcmVzZW50YXRpb24uY29tcG9uZW50cy90b2RheQ=="
+                data-page-node-id="iVVucCbR8q9lgkzv79IpKo"
+              >
+                <g class="shape" data-page-node-id="GM7Yg65hBYA7z36EPMnNEE">
+                  <rect
+                    x="3802"
+                    y="1718"
+                    width="257"
+                    height="82"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="5HROL0JFSSVr0J19VUwHqI"
+                  />
+                </g>
+                <text
+                  x="3930.5"
+                  y="1756.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="EFfORXM7dS6vJPgzhMjPi4"
+                >
+                  <tspan x="3930.5" dy="0" data-page-node-id="Yivw90mUTd1KIEr5XSjsJ1">
+                    components/today — 打卡清
+                  </tspan>
+                  <tspan x="3930.5" dy="18.5" data-page-node-id="NEPbwfreZxLOlwxR35hHem">
+                    单 / 手动录入 / 备份提醒
+                  </tspan>
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MMl9wcmVzZW50YXRpb24uY29tcG9uZW50cy9zdXBwbGVtZW50"
+                data-page-node-id="w9NgocTi0fBDHCA3527o7M"
+              >
+                <g class="shape" data-page-node-id="o2nmDSp5mUoXw2942wzrMd">
+                  <rect
+                    x="3802"
+                    y="1514"
+                    width="260"
+                    height="82"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="gSy1Bu7mj5wHP6PEaQSatP"
+                  />
+                </g>
+                <text
+                  x="3932"
+                  y="1552.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="XfCRA8N7sq4BzVt84vxXj8"
+                >
+                  <tspan x="3932" dy="0" data-page-node-id="6sp9z7FLrTp6dXYYhJlfm8">
+                    components/supplement — 补
+                  </tspan>
+                  <tspan x="3932" dy="18.5" data-page-node-id="3pk9tgSzT3S1RbFCHjrhv6">
+                    剂与成分关联
+                  </tspan>
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MMl9wcmVzZW50YXRpb24uY29tcG9uZW50cy9wYXVzZQ=="
+                data-page-node-id="rDYVHroiZ1UfqwRvWraXc5"
+              >
+                <g class="shape" data-page-node-id="ht5n6S6FEEGDvKzF8N2YsS">
+                  <rect
+                    x="4080"
+                    y="1616"
+                    width="278"
+                    height="66"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="8YI8TyGXBGi9laLHQFabB1"
+                  />
+                </g>
+                <text
+                  x="4219"
+                  y="1654.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="PbYlC6jAbAvfr68GYbbCyn"
+                >
+                  components/pause — 停药方案
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MMl9wcmVzZW50YXRpb24uY29tcG9uZW50cy9pbmdyZWRpZW50"
+                data-page-node-id="4GuDv9V0e2ArsnImncFGtt"
+              >
+                <g class="shape" data-page-node-id="DxD1mmkoUvBliDrXiGY2r8">
+                  <rect
+                    x="4082"
+                    y="1514"
+                    width="270"
+                    height="66"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="9KHQn7nRGbt6VVA4NCzFEN"
+                  />
+                </g>
+                <text
+                  x="4217"
+                  y="1552.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="QG5pd5iypOR4v5bAs1bnzc"
+                >
+                  components/ingredient — 成分
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MMl9wcmVzZW50YXRpb24uY29tcG9uZW50cy9iYWNrZmlsbA=="
+                data-page-node-id="kSBuZbAdcmDD8reH7je5WS"
+              >
+                <g class="shape" data-page-node-id="9afx0CMIWNaHWBKglChgxT">
+                  <rect
+                    x="4131"
+                    y="1396"
+                    width="249"
+                    height="66"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="aLvua4vL7IkTNKoHppJVSN"
+                  />
+                </g>
+                <text
+                  x="4255.5"
+                  y="1434.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="jDZHnyQekI2zvtlxDorV68"
+                >
+                  components/backfill — 补录
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MMl9wcmVzZW50YXRpb24uY29tcG9uZW50cy9jb21tb24="
+                data-page-node-id="lnlHV35Nx754Bhrnftso8h"
+              >
+                <g class="shape" data-page-node-id="4AEC4mOQrVsZDG2MxdFZV9">
+                  <rect
+                    x="3802"
+                    y="1616"
+                    width="258"
+                    height="82"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="0kUkmNNRce7pH1DTNXzC2C"
+                  />
+                </g>
+                <text
+                  x="3931"
+                  y="1654.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="oiORls5MrOAKAnaGB0j3On"
+                >
+                  <tspan x="3931" dy="0" data-page-node-id="PLNZDLPWsAKyIqIKusWAiW">
+                    components/common — 空态
+                  </tspan>
+                  <tspan x="3931" dy="18.5" data-page-node-id="lZt9UsdTeR1rFXdDTFvORu">
+                    / 错误态 / 骨架 / 断网条
+                  </tspan>
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MMl9wcmVzZW50YXRpb24uY29tcG9uZW50cy91aQ=="
+                data-page-node-id="QgsRpEtTvRgnPArqA5qTAg"
+              >
+                <g class="shape" data-page-node-id="KxaIUvm6OcQx2vrwDi7ngl">
+                  <rect
+                    x="4079"
+                    y="1718"
+                    width="253"
+                    height="82"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="EfaTestBPMQ0shlucQoFES"
+                  />
+                </g>
+                <text
+                  x="4205.5"
+                  y="1756.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="ELsdGfZY1mAmwd4pygJP7j"
+                >
+                  <tspan x="4205.5" dy="0" data-page-node-id="krcMWtPgExp1bC65FIIOZp">
+                    components/ui — 23 个 Radix
+                  </tspan>
+                  <tspan x="4205.5" dy="18.5" data-page-node-id="x07D677YlJmgkfRgxarHUz">
+                    基础组件
+                  </tspan>
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MM19ob29rcy5ob29rcw== entity"
+                data-page-node-id="ChUEr9gFnBAkVEmOXlDD3u"
+              >
+                <g
+                  class="shape"
+                  filter="url(#shadow-filter)"
+                  data-page-node-id="niwUMvML2Z3nIBaihXbbZO"
+                >
+                  <rect
+                    x="1301"
+                    y="1840"
+                    width="467"
+                    height="460"
+                    rx="6"
+                    stroke="#E8ECF5"
+                    fill="#FFFFFF"
+                    style="stroke-width: 2"
+                    data-page-node-id="gQJ7cTHOEWvu1krT4WUAwL"
+                  />
+                </g>
+                <text
+                  x="1534.5"
+                  y="2290"
+                  fill="#333333"
+                  class="text"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="r4bbScMaMzb7hwhOhpuCUK"
+                >
+                  数据 hooks · useLiveQuery 订阅 Dexie
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MM19ob29rcy5zdG9yZXM= entity"
+                data-page-node-id="y5xHQTMBNqIxcZ8alFQmkw"
+              >
+                <g
+                  class="shape"
+                  filter="url(#shadow-filter)"
+                  data-page-node-id="rHDde2giOCjxGdDnEBJHVO"
+                >
+                  <rect
+                    x="180"
+                    y="1832"
+                    width="438"
+                    height="304"
+                    rx="6"
+                    stroke="#E8ECF5"
+                    fill="#FFFFFF"
+                    style="stroke-width: 2"
+                    data-page-node-id="mSjq6ibAm93tdBddOAcSkS"
+                  />
+                </g>
+                <text
+                  x="399"
+                  y="1853"
+                  fill="#333333"
+                  class="text"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="Ak5m9H2M5mTFjxF3C6ZZ2b"
+                >
+                  Zustand stores
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MNF9zZXJ2aWNlX3JlcG8uc2VydmljZXM= entity"
+                data-page-node-id="vByqBe3gfzWwOjiAEtzPjb"
+              >
+                <g
+                  class="shape"
+                  filter="url(#shadow-filter)"
+                  data-page-node-id="2ILEH0DmlDiLlnPp3j9mOD"
+                >
+                  <rect
+                    x="2511"
+                    y="332"
+                    width="922"
+                    height="958"
+                    rx="6"
+                    stroke="#E8ECF5"
+                    fill="#FFFFFF"
+                    style="stroke-width: 2"
+                    data-page-node-id="BtCDNBjGC8QxzuQzWIa8Em"
+                  />
+                </g>
+                <text
+                  x="2972"
+                  y="353"
+                  fill="#333333"
+                  class="text"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="7FPGwFKS6jkVD2plFknj3I"
+                >
+                  服务层 · 11 个 service
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MNF9zZXJ2aWNlX3JlcG8ucmVwb3NpdG9yaWVz entity"
+                data-page-node-id="CFNf3tJCkYyxu991LNNSlh"
+              >
+                <g
+                  class="shape"
+                  filter="url(#shadow-filter)"
+                  data-page-node-id="BwoZOel12D5ACVK8jtdTA0"
+                >
+                  <rect
+                    x="2757"
+                    y="1440"
+                    width="444"
+                    height="476"
+                    rx="6"
+                    stroke="#E8ECF5"
+                    fill="#FFFFFF"
+                    style="stroke-width: 2"
+                    data-page-node-id="lX1Akg1wausXefYnCGzC9g"
+                  />
+                </g>
+                <text
+                  x="2979"
+                  y="1461"
+                  fill="#333333"
+                  class="text"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="pNcopOFqnE3ym8311CYk2X"
+                >
+                  仓储层 · 9 个 repository（不含业务规则）
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MNF9zZXJ2aWNlX3JlcG8uc2NoZW1hcw=="
+                data-page-node-id="43y30lMR4tBQkCbFTQNRJb"
+              >
+                <g class="shape" data-page-node-id="dbpOD0A2h6C2KXsE9NeXBo">
+                  <rect
+                    x="3249"
+                    y="1440"
+                    width="283"
+                    height="82"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="8iuywPvsA1fKGEVfJPAbh5"
+                  />
+                </g>
+                <text
+                  x="3390.5"
+                  y="1478.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="RkU0gxpCeLTxiy4kTcREZx"
+                >
+                  <tspan x="3390.5" dy="0" data-page-node-id="yK22vFuJLEfocnjomR8Mj1">
+                    schemas — 8 个 Zod schema，写
+                  </tspan>
+                  <tspan x="3390.5" dy="18.5" data-page-node-id="2AegEvG7pYTEE7vFCO0BuD">
+                    入口统一 parseOrThrow 校验
+                  </tspan>
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MNV9wZXJzaXN0ZW5jZS5kYi9zY2hlbWE= accent_2"
+                data-page-node-id="9NJsYORsdlyksJGI0Mkj86"
+              >
+                <g
+                  class="shape"
+                  filter="url(#shadow-filter)"
+                  data-page-node-id="dXrxXvBNilxY3u7WpXbWnM"
+                >
+                  <rect
+                    x="1283"
+                    y="1440"
+                    width="413"
+                    height="130"
+                    rx="6"
+                    stroke="#7A4DD4"
+                    fill="#EBE4F9"
+                    style="stroke-width: 2"
+                    data-page-node-id="tGMJ11DBxpiPh0kPhRkDxS"
+                  />
+                </g>
+                <text
+                  x="1489.5"
+                  y="1478.5"
+                  fill="#333333"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="xakIPG2tfEdWORaxxrVxtE"
+                >
+                  <tspan x="1489.5" dy="0" data-page-node-id="HpcxA1TMJ4OnyCq16LOfPc">
+                    db/schema — Dexie 库 suptrack-v12，8 张表：
+                  </tspan>
+                  <tspan x="1489.5" dy="17" data-page-node-id="xGeA04ZPE5VPh2oJPBaH5o">
+                    supplements / dosagePlans / dailyIntakes /
+                  </tspan>
+                  <tspan x="1489.5" dy="17" data-page-node-id="5KyTdms9fndrrMV76MFBPk">
+                    pausePeriods / pauseSchemes / meta / ingredients /
+                  </tspan>
+                  <tspan x="1489.5" dy="17" data-page-node-id="elyFSwJlwRHuVpvEtHcHCe">
+                    supplementIngredients（带生效区间）；索引
+                  </tspan>
+                  <tspan x="1489.5" dy="17" data-page-node-id="N3C6U6vY1YPdO1Yi9eovgT">
+                    [date+supplementId]、[date+timeSlot]
+                  </tspan>
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MNV9wZXJzaXN0ZW5jZS4mIzM0O3R5cGVzL2luZGV4LnRzJiMzNDs="
+                data-page-node-id="P8TkdXB48C8vp905CXqg8S"
+              >
+                <g class="shape" data-page-node-id="8bR5enbUx5eRBMBl681d3h">
+                  <rect
+                    x="1283"
+                    y="754"
+                    width="393"
+                    height="114"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="j3iPrSDEFRUmpfwawYApcT"
+                  />
+                </g>
+                <text
+                  x="1479.5"
+                  y="792.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="SFkSKbAArFO0bCbfezxXGE"
+                >
+                  <tspan x="1479.5" dy="0" data-page-node-id="s1jjAh69LX2r0GB5NcXmJ7">
+                    types/index.ts — 领域模型定义（Supplement
+                  </tspan>
+                  <tspan x="1479.5" dy="17.25" data-page-node-id="61QfJzXbpzf5eh8Z7CJE5p">
+                    / DosagePlan / DailyIntake / PausePeriod
+                  </tspan>
+                  <tspan x="1479.5" dy="17.25" data-page-node-id="8Ajz6sjP9VOpVjGARR61Bm">
+                    / PauseScheme / Ingredient /
+                  </tspan>
+                  <tspan x="1479.5" dy="17.25" data-page-node-id="uBp2pNY7BwcTRcNnFcRtsf">
+                    SupplementIngredient）
+                  </tspan>
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MNV9wZXJzaXN0ZW5jZS5jb25zdGFudHMv"
+                data-page-node-id="jBUWihW96XMmRpEANU5FNJ"
+              >
+                <g class="shape" data-page-node-id="EdVDk1JsADvcQFbifLlEHW">
+                  <rect
+                    x="1891"
+                    y="754"
+                    width="350"
+                    height="114"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="LLHAVov9JAtSQTBgLJHSEZ"
+                  />
+                </g>
+                <text
+                  x="2066"
+                  y="792.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="KPkz1rmJ9Aa3d7jRmeQJon"
+                >
+                  <tspan x="2066" dy="0" data-page-node-id="wVRtLmazAoH3GPsrac3mBs">
+                    constants/ — 值域枚举（时段/节奏
+                  </tspan>
+                  <tspan x="2066" dy="17.25" data-page-node-id="tEKz36VxBJut21yXSaQkTT">
+                    /停药周期/记录来源）+ 阈值（补录
+                  </tspan>
+                  <tspan x="2066" dy="17.25" data-page-node-id="M0sF3MvG2cD7zShotgL1XX">
+                    7 天 / 余量偏低 5 天 / 临期 30
+                  </tspan>
+                  <tspan x="2066" dy="17.25" data-page-node-id="QSCY3MG87I6ogIlinnozv7">天）</tspan>
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MMl9wcmVzZW50YXRpb24ucGFnZXMucGFnZXMvVG9kYXk="
+                data-page-node-id="sbZ78XT5JTRBUG18jm9fZg"
+              >
+                <g class="shape" data-page-node-id="jIbSr7tRhCXd1v46wvavcs">
+                  <rect
+                    x="3862"
+                    y="1164"
+                    width="84"
+                    height="66"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="AfuxGqSW22gWEOpZIx83hH"
+                  />
+                </g>
+                <text
+                  x="3904"
+                  y="1202.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="AP1XouSzu3VJmK58KBGnKw"
+                >
+                  今日
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MMl9wcmVzZW50YXRpb24ucGFnZXMucGFnZXMvU3VwcGxlbWVudHM="
+                data-page-node-id="jnKCufeiJjuAcRgKoDXGRp"
+              >
+                <g class="shape" data-page-node-id="Crz6lsoFQbnWRDBNkmFgci">
+                  <rect
+                    x="3862"
+                    y="1078"
+                    width="84"
+                    height="66"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="EOpg9FkOPFHLm3beVvwB1w"
+                  />
+                </g>
+                <text
+                  x="3904"
+                  y="1116.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="OGhuc5gskW5DmjS6jhG3xb"
+                >
+                  补剂
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MMl9wcmVzZW50YXRpb24ucGFnZXMucGFnZXMvUGF1c2VQZXJpb2Rz"
+                data-page-node-id="ia87hBpSRZlP0pexorKQcm"
+              >
+                <g class="shape" data-page-node-id="KO5lCopmoEthx3R4lB5aJ7">
+                  <rect
+                    x="3966"
+                    y="1164"
+                    width="84"
+                    height="66"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="Wns7BglcQCFLL6QwDK3U7C"
+                  />
+                </g>
+                <text
+                  x="4008"
+                  y="1202.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="J5GRR4IU8bgG3tir5Q47TE"
+                >
+                  停药
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MMl9wcmVzZW50YXRpb24ucGFnZXMucGFnZXMvQ2FsZW5kYXI="
+                data-page-node-id="53WesVtsQFNZK07F4MribY"
+              >
+                <g class="shape" data-page-node-id="hTnn4suZuird4FDnVPUjWG">
+                  <rect
+                    x="3966"
+                    y="1078"
+                    width="84"
+                    height="66"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="AUoOX1rKXUhnO4yDUszYAC"
+                  />
+                </g>
+                <text
+                  x="4008"
+                  y="1116.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="TyKbWND08FcRb1OTPqydaG"
+                >
+                  日历
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MMl9wcmVzZW50YXRpb24ucGFnZXMucGFnZXMvSW5ncmVkaWVudHM="
+                data-page-node-id="YeQlY02rpQJkxaD0qQmll3"
+              >
+                <g class="shape" data-page-node-id="HnaFwmgB3sx93buR9DiECY">
+                  <rect
+                    x="3862"
+                    y="1250"
+                    width="104"
+                    height="66"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="ulR5CyCncJgcI20ixltvWq"
+                  />
+                </g>
+                <text
+                  x="3914"
+                  y="1288.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="K7QBHe9EASUwQNs3SjhnAx"
+                >
+                  成分库
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MMl9wcmVzZW50YXRpb24ucGFnZXMucGFnZXMvU2V0dGluZ3M="
+                data-page-node-id="TVukRd5jYxoxntnUWr0LwB"
+              >
+                <g class="shape" data-page-node-id="FOzDEa4z2zat4YGaZQB4mV">
+                  <rect
+                    x="3986"
+                    y="1250"
+                    width="84"
+                    height="66"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="4LCFYhmSFvpyIgBLTG43AU"
+                  />
+                </g>
+                <text
+                  x="4028"
+                  y="1288.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="KLYLdppSMBmVxUhiBW6uHb"
+                >
+                  设置
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MM19ob29rcy5ob29rcy5ob29rcy91c2VUb2RheURhdGE="
+                data-page-node-id="fuuutMz0yUv9KHdWqgmZWf"
+              >
+                <g class="shape" data-page-node-id="icpNPywXWiZTWKKZaIpcAF">
+                  <rect
+                    x="1361"
+                    y="1900"
+                    width="257"
+                    height="82"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="FCFsXVlQLPsF3iDGnf45QQ"
+                  />
+                </g>
+                <text
+                  x="1489.5"
+                  y="1938.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="IsD8hO4uv37A6ZZMYTU61C"
+                >
+                  <tspan x="1489.5" dy="0" data-page-node-id="9GoNunheubtTOxJBR0kHhq">
+                    useTodayData — 今日清单/
+                  </tspan>
+                  <tspan x="1489.5" dy="18.5" data-page-node-id="Nv1UdNfMAH2ufU43ANJW2P">
+                    分组/统计/预警一次组装
+                  </tspan>
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MM19ob29rcy5ob29rcy5ob29rcy91c2VDYWxlbmRhck1vbnRo"
+                data-page-node-id="R4wioi4wlCvPcfHr2RWVtF"
+              >
+                <g class="shape" data-page-node-id="Frn0uXLfSBhk7qt8pZ5T4O">
+                  <rect
+                    x="1361"
+                    y="2002"
+                    width="276"
+                    height="66"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="xtcl5Ng8gMk6gBeJEIpKjG"
+                  />
+                </g>
+                <text
+                  x="1499"
+                  y="2040.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="oAcB7RfjBeSQgsJyn2hut6"
+                >
+                  useCalendarMonth — 42 格月历
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MM19ob29rcy5ob29rcy5ob29rcy91c2VQYXVzZURhdGE="
+                data-page-node-id="T2aiVDG4xOLvszma4bM4Ze"
+              >
+                <g class="shape" data-page-node-id="GKFpRSWSww3D1zYLT4f7LQ">
+                  <rect
+                    x="1361"
+                    y="2088"
+                    width="145"
+                    height="66"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="3w4QK1p3BkLo4LxqfPZNGf"
+                  />
+                </g>
+                <text
+                  x="1433.5"
+                  y="2126.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="jwGDRGRfWRqhbYGJ7j7bQs"
+                >
+                  usePauseData
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MM19ob29rcy5ob29rcy5ob29rcy91c2VTdXBwbGVtZW50TGlzdA=="
+                data-page-node-id="K8bdiYcJH0Kd2ECjuDbHJo"
+              >
+                <g class="shape" data-page-node-id="q9ntmTcF2SLnxjGmP6dU00">
+                  <rect
+                    x="1526"
+                    y="2088"
+                    width="182"
+                    height="66"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="7S1x3FIYP2cG2eaHgQKvNl"
+                  />
+                </g>
+                <text
+                  x="1617"
+                  y="2126.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="Pl5MpMe4KwEwNdnOa3iAmw"
+                >
+                  useSupplementList
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MM19ob29rcy5ob29rcy5ob29rcy91c2VJbmdyZWRpZW50U3VtbWFyeQ=="
+                data-page-node-id="VANqkf3b2ra71dZxxSScID"
+              >
+                <g class="shape" data-page-node-id="2LdjqiBkuTnb2NEud9rjVm">
+                  <rect
+                    x="1361"
+                    y="2174"
+                    width="214"
+                    height="66"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="Hbm673S85OOku3JHDpMPLr"
+                  />
+                </g>
+                <text
+                  x="1468"
+                  y="2212.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="OoFIi3T9M6EcGDvwSxJdRF"
+                >
+                  useIngredientSummary
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MM19ob29rcy5zdG9yZXMuc3RvcmVzL2RhdGFWZXJzaW9u"
+                data-page-node-id="BFR65IA0zH5zWJb5ZbA2v9"
+              >
+                <g class="shape" data-page-node-id="P4DKU7NMC6g5kwKf1OzIXn">
+                  <rect
+                    x="240"
+                    y="1892"
+                    width="318"
+                    height="98"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="TizZmyQ26zYab7n9AC7vMA"
+                  />
+                </g>
+                <text
+                  x="399"
+                  y="1930.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="y3q47wBSa2qxuXqkxza9xO"
+                >
+                  <tspan x="399" dy="0" data-page-node-id="ziVG8PK2PwPmdJhjeGbbvb">
+                    dataVersion — 跨标签页一致性计
+                  </tspan>
+                  <tspan x="399" dy="17.666667" data-page-node-id="ISTJtte2ARDIiqKuuhHBFx">
+                    数器（BroadcastChannel 触发重查
+                  </tspan>
+                  <tspan x="399" dy="17.666667" data-page-node-id="7Qnj31pYuioyjTxENhvwSh">
+                    ）
+                  </tspan>
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MM19ob29rcy5zdG9yZXMuc3RvcmVzL3RvYXN0U3RvcmU="
+                data-page-node-id="NApD6kNwrwJzbkwCnQwGw0"
+              >
+                <g class="shape" data-page-node-id="sBSjqOHoyXIZaFvn8NMoLk">
+                  <rect
+                    x="240"
+                    y="2010"
+                    width="279"
+                    height="66"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="hpTSROLVJiqYMoHOJGasha"
+                  />
+                </g>
+                <text
+                  x="379.5"
+                  y="2048.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="9F5NNjWCD75VYwqBzbIh28"
+                >
+                  toastStore — 全局轻提示队列
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MNF9zZXJ2aWNlX3JlcG8uc2VydmljZXMuaW50YWtlUGxhbkdyb3Vw zone_4"
+                data-page-node-id="mkT0rrBawJAwPvp5sMmWK6"
+              >
+                <g class="shape" data-page-node-id="b48bVLVCdP3X98eZy1ga44">
+                  <rect
+                    x="2571"
+                    y="392"
+                    width="391"
+                    height="460"
+                    rx="8"
+                    stroke="#4E81FF"
+                    fill="#F9FBFF"
+                    style="stroke-width: 2"
+                    data-page-node-id="8VN9c99yOWpU3bnXZVWaud"
+                  />
+                </g>
+                <text
+                  x="2766.5"
+                  y="413"
+                  fill="#333333"
+                  class="text"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="6KyEYpTqECKGYj0Gw6Sgls"
+                >
+                  打卡 / 计划 / 停药 / 补录
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MNF9zZXJ2aWNlX3JlcG8uc2VydmljZXMuY2F0YWxvZ0dyb3Vw zone_4"
+                data-page-node-id="IW597orRR8ePSiX4SSLwXj"
+              >
+                <g class="shape" data-page-node-id="SmZqarmlMAauYXcP8qWr4V">
+                  <rect
+                    x="2571"
+                    y="872"
+                    width="534"
+                    height="358"
+                    rx="8"
+                    stroke="#4E81FF"
+                    fill="#F9FBFF"
+                    style="stroke-width: 2"
+                    data-page-node-id="52wh6E99bDfV2eHSwaP93W"
+                  />
+                </g>
+                <text
+                  x="2838"
+                  y="893"
+                  fill="#333333"
+                  class="text"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="9qb3vl93SgBIQF0rTOMR6Y"
+                >
+                  补剂 / 成分 / 汇总 / 统计
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MNF9zZXJ2aWNlX3JlcG8uc2VydmljZXMuc3lzdGVtR3JvdXA= zone_4"
+                data-page-node-id="6XvENAJZmb1CqHZ0EeXWvM"
+              >
+                <g class="shape" data-page-node-id="cBq89MD8Xfu95NKrFATbMj">
+                  <rect
+                    x="2982"
+                    y="564"
+                    width="391"
+                    height="288"
+                    rx="8"
+                    stroke="#4E81FF"
+                    fill="#F9FBFF"
+                    style="stroke-width: 2"
+                    data-page-node-id="aXM8el5pHXFeGMV7oVnQr5"
+                  />
+                </g>
+                <text
+                  x="3177.5"
+                  y="585"
+                  fill="#333333"
+                  class="text"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="qLTpFPcPDn1wzCs3Z8WSgG"
+                >
+                  导入导出 / 元数据
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MNF9zZXJ2aWNlX3JlcG8uc2VydmljZXMuaW50YWtlU2VydmljZQ=="
+                data-page-node-id="SkEKskEek4NDxeKoXYkUha"
+              >
+                <g class="shape" data-page-node-id="T1nnHuO3JCAfbJcncgovqO">
+                  <rect
+                    x="3125"
+                    y="1164"
+                    width="142"
+                    height="66"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="ZiT7ZzfrAHos0jLxy0YclQ"
+                  />
+                </g>
+                <text
+                  x="3196"
+                  y="1202.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="oA4sIKMqZz9IH2cZThqjeq"
+                >
+                  intakeService
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MNF9zZXJ2aWNlX3JlcG8ucmVwb3NpdG9yaWVzLiYjMzQ7YmFzZS50cyYjMzQ7"
+                data-page-node-id="w1lHlH7ig5Cn7zrLxNDiyo"
+              >
+                <g class="shape" data-page-node-id="P35udF8IFJka736GjBnQez">
+                  <rect
+                    x="2817"
+                    y="1500"
+                    width="237"
+                    height="66"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="mr9W32xhmAEHZT9GHIuZCo"
+                  />
+                </g>
+                <text
+                  x="2935.5"
+                  y="1538.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="8MB8x5mYM7B01aweSvGmGX"
+                >
+                  base.ts — 表级通用 CRUD
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MNF9zZXJ2aWNlX3JlcG8ucmVwb3NpdG9yaWVzLmRhaWx5SW50YWtlUmVwb3NpdG9yeQ=="
+                data-page-node-id="1sGtg70FMKQ8c7xxVoEbeC"
+              >
+                <g class="shape" data-page-node-id="S5lBb6IaPnevw9F4OdFu8w">
+                  <rect
+                    x="2817"
+                    y="1586"
+                    width="302"
+                    height="82"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="RjwHvELZtw7NHJrbYBmktA"
+                  />
+                </g>
+                <text
+                  x="2968"
+                  y="1624.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="qCDPRjbokkt8XvlFpHi8PN"
+                >
+                  <tspan x="2968" dy="0" data-page-node-id="VmXL5lvbOFSzqsA8zxdgCU">
+                    dailyIntakeRepository — listByDate /
+                  </tspan>
+                  <tspan x="2968" dy="18.5" data-page-node-id="bOE4cs9Sv6o96dRs8cPi0A">
+                    listByDateRange / findActive
+                  </tspan>
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MNF9zZXJ2aWNlX3JlcG8ucmVwb3NpdG9yaWVzLnN1cHBsZW1lbnRJbmdyZWRpZW50UmVwb3NpdG9yeQ=="
+                data-page-node-id="CacwjrBlm6d6ue57qOrN34"
+              >
+                <g class="shape" data-page-node-id="A1dGsH4YGWRRHCKG0RRjTQ">
+                  <rect
+                    x="2817"
+                    y="1688"
+                    width="295"
+                    height="82"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="O1QpjF2BWEnh4mbQHNXCiK"
+                  />
+                </g>
+                <text
+                  x="2964.5"
+                  y="1726.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="uBfIdF3NaVw32SQaSA17oO"
+                >
+                  <tspan x="2964.5" dy="0" data-page-node-id="AzSum11CVpvAsOT8WLXWWD">
+                    supplementIngredientRepository —
+                  </tspan>
+                  <tspan x="2964.5" dy="18.5" data-page-node-id="eRy3YacfSavtLtvO79IgCe">
+                    effectiveAt 按日匹配当时配方
+                  </tspan>
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MNF9zZXJ2aWNlX3JlcG8ucmVwb3NpdG9yaWVzLm90aGVyUmVwb3NpdG9yaWVz"
+                data-page-node-id="RqYrDL4kJM08YW7ntvCSI0"
+              >
+                <g class="shape" data-page-node-id="IQYpeztLBZCXbz1mQe6Rzr">
+                  <rect
+                    x="2817"
+                    y="1790"
+                    width="324"
+                    height="66"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="cjSUhJWkEHdS0p8crIq4jU"
+                  />
+                </g>
+                <text
+                  x="2979"
+                  y="1828.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="J8AKaRRlY7btkiCLR6gHhG"
+                >
+                  其它实体仓储 ×7 — 专用查询扩展
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MNF9zZXJ2aWNlX3JlcG8uc2VydmljZXMuaW50YWtlUGxhbkdyb3VwLmludGFrZVNlcnZpY2U="
+                data-page-node-id="uOnBNgMs2ZkMlHvYMRAap3"
+              >
+                <g class="shape" data-page-node-id="PL8K1aLz90ZktD8sgdAiHb">
+                  <rect
+                    x="2631"
+                    y="452"
+                    width="271"
+                    height="82"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="i67xMmc2BKWmAE6JiGna3a"
+                  />
+                </g>
+                <text
+                  x="2766.5"
+                  y="490.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="DKe8CXAImbrkGan4RaMCkH"
+                >
+                  <tspan x="2766.5" dy="0" data-page-node-id="XzLuZhrIgwRSgXdDZ8l7AY">
+                    intakeService — 打卡/追加/撤
+                  </tspan>
+                  <tspan x="2766.5" dy="18.5" data-page-node-id="1GkEEW6XVSSmQHCG2wnmal">
+                    销/改量
+                  </tspan>
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MNF9zZXJ2aWNlX3JlcG8uc2VydmljZXMuaW50YWtlUGxhbkdyb3VwLnBsYW5TZXJ2aWNl"
+                data-page-node-id="T3lTXqLUj62Oap5x65nsbW"
+              >
+                <g class="shape" data-page-node-id="iiAja8P7dW9dsqHA9lgdOL">
+                  <rect
+                    x="2631"
+                    y="554"
+                    width="246"
+                    height="66"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="VDK2laYtc1XZgapIZnD3mD"
+                  />
+                </g>
+                <text
+                  x="2754"
+                  y="592.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="Gn6XSrgQ2Xg9gdKVAzM2GK"
+                >
+                  planService — 计划与节奏
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MNF9zZXJ2aWNlX3JlcG8uc2VydmljZXMuaW50YWtlUGxhbkdyb3VwLnBhdXNlU2VydmljZQ=="
+                data-page-node-id="wOq83bzJ2IDULTo9trRFoy"
+              >
+                <g class="shape" data-page-node-id="Kce6iBFrZt5jhwvSrtn3iH">
+                  <rect
+                    x="2631"
+                    y="640"
+                    width="256"
+                    height="66"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="TmltcRuWeWmT4djQC36mFV"
+                  />
+                </g>
+                <text
+                  x="2759"
+                  y="678.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="QnddjvieyTherQYd74YPMe"
+                >
+                  pauseService — 停药方案组
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MNF9zZXJ2aWNlX3JlcG8uc2VydmljZXMuaW50YWtlUGxhbkdyb3VwLmJhY2tmaWxsU2VydmljZQ=="
+                data-page-node-id="gqei8rxIxAGjjHTlgFfnfg"
+              >
+                <g class="shape" data-page-node-id="rtkPWl50rzOd79otEKvzRj">
+                  <rect
+                    x="2631"
+                    y="726"
+                    width="206"
+                    height="66"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="QoopC0U8fIE8rtvKGpaKSI"
+                  />
+                </g>
+                <text
+                  x="2734"
+                  y="764.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="EnEt39jdmViPpSvjmWGbnC"
+                >
+                  backfillService — 补录
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MNF9zZXJ2aWNlX3JlcG8uc2VydmljZXMuY2F0YWxvZ0dyb3VwLnN1cHBsZW1lbnRTZXJ2aWNl"
+                data-page-node-id="wzGDlQUjZr3knIOIvMONtx"
+              >
+                <g class="shape" data-page-node-id="gYdLG8MYU6ENreBZnJNWUw">
+                  <rect
+                    x="2631"
+                    y="1104"
+                    width="182"
+                    height="66"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="kWyZjInbWbGQ9Vwzmqd3zu"
+                  />
+                </g>
+                <text
+                  x="2722"
+                  y="1142.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="2jg6UknNRqBgHGGDsrAySZ"
+                >
+                  supplementService
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MNF9zZXJ2aWNlX3JlcG8uc2VydmljZXMuY2F0YWxvZ0dyb3VwLmluZ3JlZGllbnRTZXJ2aWNl"
+                data-page-node-id="dZZW77FFdjcAJs10PwvNij"
+              >
+                <g class="shape" data-page-node-id="OSZzuEceD0N1mEwZvhYgME">
+                  <rect
+                    x="2833"
+                    y="1104"
+                    width="171"
+                    height="66"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="7m7NFhAMzvaajkGrBI3xgs"
+                  />
+                </g>
+                <text
+                  x="2918.5"
+                  y="1142.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="oxZq5gPmVzlDVfxF69Iy7j"
+                >
+                  ingredientService
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MNF9zZXJ2aWNlX3JlcG8uc2VydmljZXMuY2F0YWxvZ0dyb3VwLnN1bW1hcnlTZXJ2aWNl"
+                data-page-node-id="Ox9ctFgT5WmFW75K126YU3"
+              >
+                <g class="shape" data-page-node-id="NEh3npbxtUmofk9Hx0qhPQ">
+                  <rect
+                    x="2631"
+                    y="1018"
+                    width="262"
+                    height="66"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="BJYl5Kpc5Kj3uXa9SH0BS0"
+                  />
+                </g>
+                <text
+                  x="2762"
+                  y="1056.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="wCPjC0eGed4hRjKXblGVFD"
+                >
+                  summaryService — 成分汇总
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MNF9zZXJ2aWNlX3JlcG8uc2VydmljZXMuY2F0YWxvZ0dyb3VwLnN0YXRzU2VydmljZQ=="
+                data-page-node-id="bURqzj5kB3sC1Klq3UBLP7"
+              >
+                <g class="shape" data-page-node-id="fimVHOUCvBzYUnDxmjcwCn">
+                  <rect
+                    x="2913"
+                    y="1018"
+                    width="132"
+                    height="66"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="6FK8FklPUEMHsDplJ7dBns"
+                  />
+                </g>
+                <text
+                  x="2979"
+                  y="1056.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="fkLLJAQMnua9XQsWC28X2k"
+                >
+                  statsService
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MNF9zZXJ2aWNlX3JlcG8uc2VydmljZXMuY2F0YWxvZ0dyb3VwLnN0b2NrQWRqdXN0"
+                data-page-node-id="22tSzQ7RMHRcR1e375TtNC"
+              >
+                <g class="shape" data-page-node-id="cPnM5liytx5CJApEGDAmqT">
+                  <rect
+                    x="2631"
+                    y="932"
+                    width="307"
+                    height="66"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="oMC4eCCRiroMjDkVO9hUNA"
+                  />
+                </g>
+                <text
+                  x="2784.5"
+                  y="970.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="f6sshSMYypvOq578lKffB6"
+                >
+                  stockAdjust — 余量联动唯一入口
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MNF9zZXJ2aWNlX3JlcG8uc2VydmljZXMuc3lzdGVtR3JvdXAuaW1wb3J0RXhwb3J0U2VydmljZQ=="
+                data-page-node-id="yjVxEzVg1yxHUyCELr9HSz"
+              >
+                <g class="shape" data-page-node-id="75vFQAaJ77P7VhB29jP3Ka">
+                  <rect
+                    x="3042"
+                    y="624"
+                    width="271"
+                    height="82"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="YZ3xkQ2lgqNngEt5lDqED4"
+                  />
+                </g>
+                <text
+                  x="3177.5"
+                  y="662.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="SCnUypUtxXK3ad3ANLFGtF"
+                >
+                  <tspan x="3177.5" dy="0" data-page-node-id="wAGH2CrFlqxQOBaKf0FsC6">
+                    importExportService — 导入导
+                  </tspan>
+                  <tspan x="3177.5" dy="18.5" data-page-node-id="lPYBaOe8Xa1kvluUDxwfTj">
+                    出/备份恢复
+                  </tspan>
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MNF9zZXJ2aWNlX3JlcG8uc2VydmljZXMuc3lzdGVtR3JvdXAubWV0YVNlcnZpY2U="
+                data-page-node-id="qjBEjJXyaXudx5Dk30XbXc"
+              >
+                <g class="shape" data-page-node-id="MSL0SVB4O3ZCtm5N5pU5ZP">
+                  <rect
+                    x="3042"
+                    y="726"
+                    width="210"
+                    height="66"
+                    stroke="#0D32B2"
+                    fill="#FFFFFF"
+                    class="stroke-B1 fill-N7"
+                    style="stroke-width: 2"
+                    data-page-node-id="b3efTnxeu88SgIvb21Bhn9"
+                  />
+                </g>
+                <text
+                  x="3147"
+                  y="764.5"
+                  fill="#000000"
+                  class="text-bold"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="WZSRARh2HX0XPtkIJDxwZ9"
+                >
+                  metaService — 元数据
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay4oTDJfcHJlc2VudGF0aW9uLnBhZ2VzLnBhZ2VzL1RvZGF5IC0mZ3Q7IEw0X3NlcnZpY2VfcmVwby5zZXJ2aWNlcy5pbnRha2VTZXJ2aWNlKVswXQ=="
+                data-page-node-id="lR3EzzSll5QdUwfAZwYG8Y"
+              >
+                <marker
+                  id="mk-d2-2876619026-3488378134"
+                  markerWidth="10"
+                  markerHeight="12"
+                  refX="7"
+                  refY="6"
+                  viewBox="0 0 10 12"
+                  orient="auto"
+                  markerUnits="userSpaceOnUse"
+                  data-page-node-id="rJgTL20XnsMfxuUqX3oGH3"
+                >
+                  <polygon
+                    points="0,0 10,6 0,12"
+                    fill="#0D32B2"
+                    class="connection fill-B1"
+                    stroke-width="2"
+                    data-page-node-id="YtA9FLyiJPnKOGo4POi6ks"
+                  />
+                </marker>
+                <path
+                  d="M 3860 1186 L 3271 1186"
+                  stroke="#0D32B2"
+                  fill="none"
+                  class="connection stroke-B1"
+                  style="stroke-width: 2"
+                  marker-end="url(#mk-d2-2876619026-3488378134)"
+                  mask="url(#d2-2876619026)"
+                  data-page-node-id="MNlJtYBjiMc9d11uB9Rj0C"
+                />
+                <text
+                  x="3698.5"
+                  y="1208"
+                  fill="#676C7E"
+                  class="text-italic fill-N2"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="L6b2hQvJBMXS2GWHPoNo0x"
+                >
+                  用户打卡
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MNF9zZXJ2aWNlX3JlcG8uKHNlcnZpY2VzLmludGFrZVNlcnZpY2UgLSZndDsgc2NoZW1hcylbMF0="
+                data-page-node-id="nxrJj48NcFXTzhbfyvUy9U"
+              >
+                <marker
+                  id="mk-d2-2876619026-2461636544"
+                  markerWidth="10"
+                  markerHeight="12"
+                  refX="7"
+                  refY="6"
+                  viewBox="0 0 10 12"
+                  orient="auto"
+                  markerUnits="userSpaceOnUse"
+                  data-page-node-id="KHnhE41JyXs0K76aPcl6si"
+                >
+                  <polygon
+                    points="0,0 10,6 0,12"
+                    fill="#000000"
+                    class="connection"
+                    stroke-width="2"
+                    data-page-node-id="dspNDOHIH3Wosm4PAPBvwk"
+                  />
+                </marker>
+                <path
+                  d="M 3269 1208 L 3340 1208 S 3350 1208 3350 1218 L 3350 1436"
+                  stroke="#000000"
+                  fill="none"
+                  class="connection"
+                  style="stroke-width: 2"
+                  marker-end="url(#mk-d2-2876619026-2461636544)"
+                  mask="url(#d2-2876619026)"
+                  data-page-node-id="EevaSoxcIdNdxgsiaIq1Vm"
+                />
+                <text
+                  x="3453.5"
+                  y="1367"
+                  fill="#000000"
+                  class="text-italic"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="aCL1wUkAwGdrnH87Ut4FKM"
+                >
+                  parseOrThrow 运行时校验
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MNF9zZXJ2aWNlX3JlcG8uKHNlcnZpY2VzLmludGFrZVNlcnZpY2UgLSZndDsgcmVwb3NpdG9yaWVzKVswXQ=="
+                data-page-node-id="r2AuNfn7TZHe1rwD5vsP8H"
+              >
+                <path
+                  d="M 3163 1232 L 3163 1436"
+                  stroke="#000000"
+                  fill="none"
+                  class="connection"
+                  style="stroke-width: 2"
+                  marker-end="url(#mk-d2-2876619026-2461636544)"
+                  mask="url(#d2-2876619026)"
+                  data-page-node-id="yvOFuE69scSIuBTNa1KWgi"
+                />
+                <text
+                  x="2927"
+                  y="1341"
+                  fill="#000000"
+                  class="text-italic"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="QgA8qYTnACrRfHcclHRCTo"
+                >
+                  db.transaction：insert 记录 + stockAdjust 扣减余量（同事务）
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay4oTDNfaG9va3MuaG9va3MuaG9va3MvdXNlVG9kYXlEYXRhIC0mZ3Q7IEw0X3NlcnZpY2VfcmVwby5yZXBvc2l0b3JpZXMpWzBd"
+                data-page-node-id="NRZEdGUqlMnlXIkAEHfCAg"
+              >
+                <path
+                  d="M 1620 1946 L 2969 1946 S 2979 1946 2979 1936 L 2979 1920"
+                  stroke="#0D32B2"
+                  fill="none"
+                  class="connection stroke-B1"
+                  style="stroke-width: 2"
+                  marker-end="url(#mk-d2-2876619026-3488378134)"
+                  mask="url(#d2-2876619026)"
+                  data-page-node-id="usVjYfatKPvlg3cC1Gdba5"
+                />
+                <text
+                  x="2661"
+                  y="1935"
+                  fill="#676C7E"
+                  class="text-italic fill-N2"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="JQEMtaChCNjCsHTzOCTv4w"
+                >
+                  useLiveQuery 取材（依赖 5 个仓储）
+                </text>
+              </g>
+              <g
+                class="Ym9keS4oc3RhY2suTDNfaG9va3MuaG9va3MuaG9va3MvdXNlVG9kYXlEYXRhIC0mZ3Q7IHV0aWxzX3JhaWwudXRpbHMvZGF5U3RhdGUpWzBd"
+                data-page-node-id="Lbhor2i3JPaJJC5huAsV4s"
+              >
+                <path
+                  d="M 1620 1923 L 2366 1923 S 2376 1923 2376 1913 L 2376 252 S 2376 242 2386 242 L 5152.5 242"
+                  stroke="#0D32B2"
+                  fill="none"
+                  class="connection stroke-B1"
+                  style="stroke-width: 2"
+                  marker-end="url(#mk-d2-2876619026-3488378134)"
+                  mask="url(#d2-2876619026)"
+                  data-page-node-id="1uIX9YXTzoCWUfLAbZcycw"
+                />
+                <text
+                  x="2546.5"
+                  y="231"
+                  fill="#676C7E"
+                  class="text-italic fill-N2"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="PNPr9i05vt6EXSDkrSTNSO"
+                >
+                  resolveDayItems 推导四态清单
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay4oTDVfcGVyc2lzdGVuY2UuZGIvc2NoZW1hIC0mZ3Q7IEwzX2hvb2tzLmhvb2tzLmhvb2tzL3VzZVRvZGF5RGF0YSlbMF0="
+                data-page-node-id="8KHpvPHEOK7vRUDfK5wEIZ"
+              >
+                <path
+                  d="M 1489 1572 L 1489 1896"
+                  stroke="#0D32B2"
+                  fill="none"
+                  class="connection stroke-B1"
+                  style="stroke-width: 2"
+                  marker-end="url(#mk-d2-2876619026-3488378134)"
+                  mask="url(#d2-2876619026)"
+                  data-page-node-id="KxiLdy7hINEJolzNpuFYmu"
+                />
+                <text
+                  x="1604.5"
+                  y="1741"
+                  fill="#676C7E"
+                  class="text-italic fill-N2"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="ZhSjCFqVxiGZbM8Q0lYkjn"
+                >
+                  liveQuery 同标签页自动重查
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay5MM19ob29rcy4oc3RvcmVzLnN0b3Jlcy9kYXRhVmVyc2lvbiAtJmd0OyBob29rcy5ob29rcy91c2VUb2RheURhdGEpWzBd"
+                data-page-node-id="FSzzUtv9Bo2MGEvYuPMQam"
+              >
+                <path
+                  d="M 560 1941 L 1357 1941"
+                  stroke="#000000"
+                  fill="none"
+                  class="connection"
+                  style="stroke-width: 2"
+                  marker-end="url(#mk-d2-2876619026-2461636544)"
+                  mask="url(#d2-2876619026)"
+                  data-page-node-id="CwsIXt58IudTfyYP3dMt2L"
+                />
+                <text
+                  x="959.5"
+                  y="1930"
+                  fill="#000000"
+                  class="text-italic"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="GKImrYERME2jcO0yiE2DaE"
+                >
+                  BroadcastChannel 跨页广播 → 版本自增触发重查
+                </text>
+              </g>
+              <g
+                class="Ym9keS4oc3RhY2suTDRfc2VydmljZV9yZXBvLnNlcnZpY2VzIC0mZ3Q7IHV0aWxzX3JhaWwpWzBd"
+                data-page-node-id="ysHZ0NTonj7TowG0GcniZb"
+              >
+                <path
+                  d="M 3435 645 L 4695 645"
+                  stroke="#0D32B2"
+                  fill="none"
+                  class="connection stroke-B1"
+                  style="stroke-width: 2"
+                  marker-end="url(#mk-d2-2876619026-3488378134)"
+                  mask="url(#d2-2876619026)"
+                  data-page-node-id="bHZgtPZCFsaJGpJ4y47cwH"
+                />
+                <text
+                  x="4066"
+                  y="634"
+                  fill="#676C7E"
+                  class="text-italic fill-N2"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="D1XwwbHXAZF2MeSflAZFUZ"
+                >
+                  调用纯函数（不依赖 db / React）
+                </text>
+              </g>
+              <g
+                class="Ym9keS5zdGFjay4oTDRfc2VydmljZV9yZXBvLnNlcnZpY2VzIC0mZ3Q7IEw1X3BlcnNpc3RlbmNlLmNvbnN0YW50cy8pWzBd"
+                data-page-node-id="RwLyvap0Sqix18HAgCjrqm"
+              >
+                <path
+                  d="M 2509 811 L 2245 811"
+                  stroke="#0D32B2"
+                  fill="none"
+                  class="connection stroke-B1"
+                  style="stroke-width: 2"
+                  marker-end="url(#mk-d2-2876619026-3488378134)"
+                  mask="url(#d2-2876619026)"
+                  data-page-node-id="9TqKzEIE1HnPDRsUs9Th23"
+                />
+                <text
+                  x="2363"
+                  y="833"
+                  fill="#676C7E"
+                  class="text-italic fill-N2"
+                  style="text-anchor: middle; font-size: 16px"
+                  data-page-node-id="YoTOPJXEAXOhKFuDMncdm6"
+                >
+                  复用值域枚举与阈值
+                </text>
+              </g>
+              <mask
+                id="d2-2876619026"
+                maskUnits="userSpaceOnUse"
+                x="-11"
+                y="-11"
+                width="6055"
+                height="2685"
+                data-page-node-id="4LIFq8x9WaRj1nK5eJ98ZB"
+              >
+                <rect
+                  x="-11"
+                  y="-11"
+                  width="6055"
+                  height="2685"
+                  fill="white"
+                  data-page-node-id="uIuvzSntiBWE9pcww357fp"
+                ></rect>
+                <rect
+                  x="3658"
+                  y="1192"
+                  width="81"
+                  height="21"
+                  fill="rgba(0,0,0,0.75)"
+                  data-page-node-id="TeMEdcqe0yrYFF9B9DKdmg"
+                ></rect>
+                <rect
+                  x="3354"
+                  y="1351"
+                  width="199"
+                  height="21"
+                  fill="rgba(0,0,0,0.75)"
+                  data-page-node-id="kHZ7D6P8wAJgtqPlXhvWlr"
+                ></rect>
+                <rect
+                  x="2695"
+                  y="1325"
+                  width="464"
+                  height="21"
+                  fill="rgba(0,0,0,0.75)"
+                  data-page-node-id="MaG21Od2blAEKgZLW3resS"
+                ></rect>
+                <rect
+                  x="2520"
+                  y="1919"
+                  width="282"
+                  height="21"
+                  fill="rgba(0,0,0,0.75)"
+                  data-page-node-id="dhldE8w28ximy24RrFm0uO"
+                ></rect>
+                <rect
+                  x="2431"
+                  y="215"
+                  width="231"
+                  height="21"
+                  fill="rgba(0,0,0,0.75)"
+                  data-page-node-id="4FcalVWDX9OrJRiX1n4QUq"
+                ></rect>
+                <rect
+                  x="1493"
+                  y="1725"
+                  width="223"
+                  height="21"
+                  fill="rgba(0,0,0,0.75)"
+                  data-page-node-id="u4NHZCZqPdeIFvgCBkvLHn"
+                ></rect>
+                <rect
+                  x="771"
+                  y="1914"
+                  width="377"
+                  height="21"
+                  fill="rgba(0,0,0,0.75)"
+                  data-page-node-id="QAslJ6tzI5VLo1GicBAw2B"
+                ></rect>
+                <rect
+                  x="3933"
+                  y="618"
+                  width="266"
+                  height="21"
+                  fill="rgba(0,0,0,0.75)"
+                  data-page-node-id="pCVqXYbaDCgUhRu7FTFcXk"
+                ></rect>
+                <rect
+                  x="2274"
+                  y="817"
+                  width="178"
+                  height="21"
+                  fill="rgba(0,0,0,0.75)"
+                  data-page-node-id="EHLAXEcCWLJnuvXIkVvHex"
+                ></rect>
+              </mask>
+            </svg>
+          </svg>
+        </div>
+      </div>
+    </div>
+    <div class="deep-edit-panel" id="deep-edit-panel" data-page-node-id="ps1NZtf6OWzoulzHJCHpqO">
+      <input
+        type="text"
+        id="deep-edit-input"
+        placeholder="描述你想如何修改这张图…"
+        data-page-node-id="vAOVUsE9g4ns3yhPxjwLpp"
+      />
+      <button
+        class="action-button deep-edit-submit"
+        id="deep-edit-submit"
+        type="button"
+        data-page-node-id="v7Y7vlbNEaJEPSelXLyZps"
+      >
+        深度编辑
+      </button>
+    </div>
+    <p class="deep-edit-error" id="deep-edit-error" data-page-node-id="zFGBKmEqgICziCuCWun1Xm"></p>
+    <div class="modal-overlay" id="api-key-modal" data-page-node-id="nbCuDH9g1f7GWjEYNSORr7">
+      <div class="modal-dialog" data-page-node-id="GrG1GmwJlf1Lajavw4PgMc">
+        <h3 data-page-node-id="h3jOBkAp94pFUC0hXPEgg4">API Key 配置</h3>
+        <p class="modal-desc" data-page-node-id="QkVFWAnoHX5L0GeYkNvsD0">
+          Key 仅保存在您的浏览器本地，我们不会存储
+        </p>
+        <input
+          type="password"
+          id="api-key-input"
+          placeholder="DeepSeek API Key"
+          autocomplete="off"
+          data-page-node-id="gpVNXefNFKGsjREPQRHT8S"
+        />
+        <p class="modal-status" id="api-key-status" data-page-node-id="bcq4N24MBlzjiwJtALtoqT"></p>
+        <div class="modal-actions" data-page-node-id="mZnXKRUxIVDSVrl8IAhwlE">
+          <button id="api-key-validate" type="button" data-page-node-id="n4zNy1yYBLjBfnpGMXeHLt">
+            校验
+          </button>
+          <button
+            id="api-key-save"
+            class="primary"
+            type="button"
+            data-page-node-id="4SMyodg4FLxl8IbmznMXat"
+          >
+            保存
+          </button>
+          <button id="api-key-close" type="button" data-page-node-id="yxDwKEYKk6iQVEQzy6KQ92">
+            关闭
+          </button>
+        </div>
+        <a
+          class="modal-link"
+          href="https://platform.deepseek.com/api_keys"
+          target="_blank"
+          rel="noopener noreferrer"
+          data-page-node-id="M2Eyy0h7YRGFGhqQJkAEhN"
+          >没有 Key？前往 DeepSeek 官方申请 →</a
+        >
+      </div>
+    </div>
+    <script>
+      ;(function () {
+        const downloadButton = document.getElementById('download-svg-button')
+        const canvas = document.querySelector('.canvas')
+        if (!downloadButton || !canvas) {
+          return
+        }
+
+        const tabButtons = document.querySelectorAll('.tab-button')
+        const tabContents = document.querySelectorAll('.tab-content')
+        const viewport = canvas.querySelector('.diagram-viewport')
+        const viewButtons = canvas.querySelectorAll('.view-button')
+        const viewStatus = canvas.querySelector('.view-status')
+        let viewMode = 'width'
+
+        function activeFrame() {
+          const activeContent = canvas.querySelector('.tab-content.active')
+          return (activeContent || viewport).querySelector('.diagram-frame')
+        }
+
+        function updateView(resetScroll) {
+          const frame = activeFrame()
+          const svg = frame && frame.querySelector('svg')
+          if (!svg) return
+          const box = svg.viewBox && svg.viewBox.baseVal
+          const declaredWidth = Number((svg.getAttribute('width') || '').replace(/px$/, ''))
+          const declaredHeight = Number((svg.getAttribute('height') || '').replace(/px$/, ''))
+          const width = declaredWidth > 0 ? declaredWidth : box && box.width
+          const height = declaredHeight > 0 ? declaredHeight : box && box.height
+          if (!(width > 0 && height > 0)) return
+
+          // Measure the unscaled SVG text. Keep the source SVG untouched so export
+          // and embedded tooltip code retain their original attributes and styles.
+          let minFontSize = Infinity
+          svg.querySelectorAll('text, tspan').forEach((text) => {
+            const size = parseFloat(window.getComputedStyle(text).fontSize)
+            if (size > 0 && text.textContent.trim()) minFontSize = Math.min(minFontSize, size)
+          })
+          const intrinsicScale =
+            box && box.width > 0 && box.height > 0
+              ? Math.min(width / box.width, height / box.height)
+              : 1
+          const readableScale = Number.isFinite(minFontSize)
+            ? Math.min(1, 12 / (minFontSize * intrinsicScale))
+            : 0.75
+          // Reserve a scrollbar gutter so remeasuring cannot oscillate at the edge.
+          const availableWidth = Math.max(1, viewport.clientWidth - 18)
+          const availableHeight = Math.max(1, viewport.clientHeight - 18)
+          let scale = 1
+          if (viewMode === 'width')
+            scale = Math.max(readableScale, Math.min(1, availableWidth / width))
+          if (viewMode === 'all')
+            scale = Math.min(1, availableWidth / width, availableHeight / height)
+          frame.style.width = width * scale + 'px'
+          frame.style.height = height * scale + 'px'
+          const scrollable = width * scale > availableWidth || height * scale > availableHeight
+          viewStatus.textContent =
+            Math.round(scale * 100) + '%' + (scrollable ? ' · 可滚动查看' : '')
+          if (resetScroll) {
+            viewport.scrollLeft = 0
+            viewport.scrollTop = 0
+          }
+        }
+
+        viewButtons.forEach((button) => {
+          button.addEventListener('click', () => {
+            viewMode = button.getAttribute('data-view')
+            viewButtons.forEach((item) =>
+              item.setAttribute('aria-pressed', String(item === button)),
+            )
+            updateView(true)
+          })
+        })
+        window.addEventListener('resize', () => updateView(false))
+        canvas.addEventListener('diagram-updated', () => updateView(true))
+        updateView(false)
+        if (document.fonts && document.fonts.ready)
+          document.fonts.ready.then(() => updateView(false))
+
+        tabButtons.forEach((button) => {
+          button.addEventListener('click', () => {
+            tabButtons.forEach((btn) => btn.classList.remove('active'))
+            tabContents.forEach((content) => content.classList.remove('active'))
+
+            button.classList.add('active')
+            const targetId = button.getAttribute('data-target')
+            const targetContent = document.getElementById(targetId)
+            if (targetContent) {
+              targetContent.classList.add('active')
+            }
+            updateView(true)
+          })
+        })
+
+        downloadButton.addEventListener('click', function () {
+          let svg = null
+          if (tabContents.length > 0) {
+            const activeContent = document.querySelector('.tab-content.active')
+            if (activeContent) {
+              svg = activeContent.querySelector('svg')
+            }
+          } else {
+            svg = canvas.querySelector('svg')
+          }
+
+          if (!svg) {
+            window.alert('当前页面未找到可导出的 SVG')
+            return
+          }
+          const serializer = new XMLSerializer()
+          let svgSource = serializer.serializeToString(svg)
+          if (!svgSource.includes('xmlns=')) {
+            svgSource = svgSource.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"')
+          }
+          if (!svgSource.includes('xmlns:xlink=')) {
+            svgSource = svgSource.replace('<svg', '<svg xmlns:xlink="http://www.w3.org/1999/xlink"')
+          }
+          const blob = new Blob([svgSource], { type: 'image/svg+xml;charset=utf-8' })
+          const blobUrl = URL.createObjectURL(blob)
+          const link = document.createElement('a')
+          link.href = blobUrl
+
+          let dlName = 'diagram-f7c03d7f-59b9-4438-8326-c2324351fcb9.svg'
+          if (tabContents.length > 0) {
+            const activeBtn = document.querySelector('.tab-button.active')
+            if (activeBtn) {
+              dlName = dlName.replace('.svg', '-' + activeBtn.textContent.trim() + '.svg')
+            }
+          }
+          link.download = dlName
+
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+          URL.revokeObjectURL(blobUrl)
+        })
+      })()
+    </script>
+    <script>
+      ;(function () {
+        var CW_SESSION_ID = 'f7c03d7f-59b9-4438-8326-c2324351fcb9'
+        var CW_RUN_ID = 'aider_stage1_f7c03d7f-59b9-4438-8326-c2324351fcb9'
+        var API_KEY_STORAGE_KEY = 'cw_user_api_key'
+        var EDIT_ENDPOINT = 'https://pptx.chenxitech.site/session/edit'
+        var KEY_VALIDATE_URL = 'https://api.deepseek.com/v1/models'
+
+        var modal = document.getElementById('api-key-modal')
+        var openButton = document.getElementById('api-key-config-button')
+        var closeButton = document.getElementById('api-key-close')
+        var saveButton = document.getElementById('api-key-save')
+        var validateButton = document.getElementById('api-key-validate')
+        var keyInput = document.getElementById('api-key-input')
+        var keyStatus = document.getElementById('api-key-status')
+        var editInput = document.getElementById('deep-edit-input')
+        var editButton = document.getElementById('deep-edit-submit')
+        var editError = document.getElementById('deep-edit-error')
+        if (!modal || !openButton || !editButton) {
+          return
+        }
+
+        function setKeyStatus(message, ok) {
+          keyStatus.textContent = message
+          keyStatus.className = 'modal-status ' + (ok ? 'ok' : 'err')
+        }
+
+        function openModal() {
+          var saved = localStorage.getItem(API_KEY_STORAGE_KEY)
+          if (saved) {
+            keyInput.value = saved
+            setKeyStatus('已加载本地保存的 Key', true)
+          } else {
+            keyInput.value = ''
+            setKeyStatus('', true)
+          }
+          modal.style.display = 'flex'
+        }
+
+        function closeModal() {
+          modal.style.display = 'none'
+        }
+
+        function showEditError(message) {
+          editError.textContent = message
+          editError.style.display = 'block'
+        }
+
+        function hideEditError() {
+          editError.textContent = ''
+          editError.style.display = 'none'
+        }
+
+        // 页面加载时若已保存 Key，则回填（password 输入框自动掩码显示）
+        var existingKey = localStorage.getItem(API_KEY_STORAGE_KEY)
+        if (existingKey) {
+          keyInput.value = existingKey
+        }
+
+        openButton.addEventListener('click', openModal)
+        closeButton.addEventListener('click', closeModal)
+        modal.addEventListener('click', function (event) {
+          if (event.target === modal) {
+            closeModal()
+          }
+        })
+
+        validateButton.addEventListener('click', function () {
+          var key = keyInput.value.trim()
+          if (!key) {
+            setKeyStatus('请输入 Key', false)
+            return
+          }
+          setKeyStatus('校验中…', true)
+          fetch(KEY_VALIDATE_URL, {
+            method: 'GET',
+            headers: { Authorization: 'Bearer ' + key },
+          })
+            .then(function (resp) {
+              if (resp.ok) {
+                setKeyStatus('校验通过', true)
+              } else {
+                setKeyStatus('校验失败，请检查 Key', false)
+              }
+            })
+            .catch(function () {
+              setKeyStatus('校验失败，请检查网络', false)
+            })
+        })
+
+        saveButton.addEventListener('click', function () {
+          var key = keyInput.value.trim()
+          if (!key) {
+            setKeyStatus('请输入 Key', false)
+            return
+          }
+          localStorage.setItem(API_KEY_STORAGE_KEY, key)
+          setKeyStatus('已保存到浏览器本地', true)
+        })
+
+        editButton.addEventListener('click', function () {
+          var instruction = editInput.value.trim()
+          if (!instruction) {
+            showEditError('请先描述你想如何修改这张图')
+            return
+          }
+          if (!CW_SESSION_ID) {
+            showEditError('当前页面缺少 session_id，无法进行深度编辑')
+            return
+          }
+          var key = localStorage.getItem(API_KEY_STORAGE_KEY)
+          if (!key) {
+            openModal()
+            setKeyStatus('请先配置并保存 API Key', false)
+            return
+          }
+          hideEditError()
+          editButton.disabled = true
+          editButton.textContent = '生成中…'
+          fetch(EDIT_ENDPOINT, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-User-API-Key': key,
+            },
+            body: JSON.stringify({ session_id: CW_SESSION_ID, instruction: instruction }),
+          })
+            .then(function (resp) {
+              return resp.json().then(function (data) {
+                if (!resp.ok) {
+                  var detail =
+                    data && data.detail ? data.detail : '请求失败（HTTP ' + resp.status + '）'
+                  throw new Error(detail)
+                }
+                return data
+              })
+            })
+            .then(function (data) {
+              if (!data || !data.svg) {
+                throw new Error('响应中缺少 svg 内容')
+              }
+              var activeTab = document.querySelector('.tab-content.active')
+              var target = (activeTab || document.querySelector('.diagram-viewport')).querySelector(
+                '.diagram-frame',
+              )
+              target.innerHTML = data.svg
+              document.querySelector('.canvas').dispatchEvent(new Event('diagram-updated'))
+              hideEditError()
+            })
+            .catch(function (err) {
+              showEditError(err.message || '深度编辑失败，请稍后重试')
+            })
+            .finally(function () {
+              editButton.disabled = false
+              editButton.textContent = '深度编辑'
+            })
+        })
+      })()
+    </script>
+  </body>
+</html>

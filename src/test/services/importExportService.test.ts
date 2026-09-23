@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { db } from '@/db'
 import {
   EXPORT_FORMAT,
@@ -8,6 +8,7 @@ import {
   type ExportPayload,
 } from '@/services/importExportService'
 import { resetDb, seedIntake, seedPlan, seedSupplement } from '../helpers/db'
+import { metaService } from '@/services/metaService'
 import { newId } from '@/utils/id'
 
 beforeEach(async () => {
@@ -170,5 +171,69 @@ describe('importFromFile', () => {
     expect(result.imported.supplements).toBe(1)
     expect(result.issues).toHaveLength(1)
     expect(await db.supplements.count()).toBe(1)
+  })
+})
+
+describe('L-3 · 导入后的「上次导出」时间', () => {
+  /**
+   * 测试环境是 node（无 DOM），而 skipBackup=false 会真的走 exportToFile()
+   * 去点一个 <a> 触发下载。这里只把三处浏览器 API 换成空实现，
+   * 让 exportToFile 能跑完 —— 它真正要验证的是 meta 里的 lastExportAt。
+   */
+  function stubDownloadEnvironment() {
+    const anchor = {
+      href: '',
+      download: '',
+      click: vi.fn(),
+      remove: vi.fn(),
+    }
+    vi.stubGlobal('document', {
+      createElement: vi.fn(() => anchor),
+      body: { appendChild: vi.fn() },
+    })
+    vi.stubGlobal('URL', {
+      ...URL,
+      createObjectURL: vi.fn(() => 'blob:mock'),
+      revokeObjectURL: vi.fn(),
+    })
+    // exportToFile 用 window.setTimeout 延迟回收 blob；测试里立即执行即可
+    vi.stubGlobal('window', { setTimeout: (fn: () => void) => fn() })
+    return anchor
+  }
+
+  it('skipBackup=false：导入后 lastExportAt 被修正为本次导入时间，不是备份文件里的旧时间', async () => {
+    const anchor = stubDownloadEnvironment()
+    try {
+      await seedAll()
+      // 造一份「很久以前导出」的备份
+      const payload: ExportPayload = await buildExport()
+      payload.meta = { ...payload.meta, lastExportAt: '2026-01-01T00:00:00.000Z' }
+
+      // 先让当前库里的 lastExportAt 也是旧值，确认改动确实来自导入流程
+      await metaService.setLastExportAt('2026-01-02T00:00:00.000Z')
+
+      await importFromFile(fileOf(payload))
+
+      // 自动备份确实发生了（下载被触发）
+      expect(anchor.click).toHaveBeenCalled()
+
+      const after = await metaService.getLastExportAt()
+      expect(after).not.toBe('2026-01-01T00:00:00.000Z')
+      expect(after).not.toBe('2026-01-02T00:00:00.000Z')
+      // 应是刚刚（本次导入）写下的
+      expect(Date.now() - new Date(after!).getTime()).toBeLessThan(60_000)
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('skipBackup=true：不做自动备份，因而保留备份文件里的原值', async () => {
+    await seedAll()
+    const payload: ExportPayload = await buildExport()
+    payload.meta = { ...payload.meta, lastExportAt: '2026-01-01T00:00:00.000Z' }
+
+    await importFromFile(fileOf(payload), { skipBackup: true })
+
+    expect(await metaService.getLastExportAt()).toBe('2026-01-01T00:00:00.000Z')
   })
 })

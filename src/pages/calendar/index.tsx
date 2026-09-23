@@ -62,7 +62,8 @@ const LEGEND: Array<{ label: string; render: () => React.ReactNode }> = [
     ),
   },
   { label: '漏服', render: () => <Dot kind="missed" /> },
-  { label: '今天休息', render: () => <Dot kind="rest" /> },
+  // L-4：图例是给整月用的，不特指今天，所以写「休息」而不是「今天休息」
+  { label: '休息', render: () => <Dot kind="rest" /> },
   { label: '停用', render: () => <Dot kind="paused" /> },
 ]
 
@@ -151,7 +152,8 @@ function BackfillEntry({
   if (date >= now) return null
 
   if (status === 'rest') {
-    return <p className="text-muted-foreground text-xs">今日休息</p>
+    // L-4：详情看的是任意历史日期，不能再写「今日」——「该日休息」才对得上
+    return <p className="text-muted-foreground text-xs">该日休息</p>
   }
 
   if (status === 'paused') {
@@ -204,7 +206,8 @@ export function CalendarPage() {
   const status = resolveDayStatus(detailItems)
   const pausedItem = detailItems.find((item) => item.state === 'paused')
 
-  // 详情卡统计行（设计 3:318）：已吃 / 今天休息 / 停用
+  // 详情卡统计行（设计 3:318）：已吃 / 休息 / 停用
+  // L-4：这里统计的是所选**历史日期**那一列，不写「今天休息」（该词只属于今日页）
   const restCount = useMemo(
     () => detailItems.filter((it) => it.state === 'rest').length,
     [detailItems],
@@ -309,7 +312,7 @@ export function CalendarPage() {
             <header className="border-b px-4 py-2.5">
               <p className="text-sm font-medium">{formatDateLabel(selected)}</p>
               <p className="text-muted-foreground mt-0.5 text-xs tabular-nums">
-                已吃 {detail.summary.taken} · 今天休息 {restCount} · 停用 {pausedCount}
+                已吃 {detail.summary.taken} · 休息 {restCount} · 停用 {pausedCount}
               </p>
             </header>
 

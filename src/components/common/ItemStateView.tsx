@@ -1,7 +1,7 @@
 import { Check } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { INTAKE_ORIGIN } from '@/constants/enums'
-import { formatShortDate, formatTime } from '@/utils/date'
+import { formatShortDate, formatTime, today } from '@/utils/date'
 import type { DayItem, ItemState } from '@/utils/dayState'
 
 /**
@@ -46,8 +46,15 @@ export function StateSwatch({ state }: { state: ItemState }) {
  * 颜色按 Ardot 设计稿写在各段里（不靠父节点传色）：
  *   休息：「今天不用吃」slate-400，「下次 9/22」slate-600 加粗（P2 的落点）
  *   停用：「停用中」violet-600，原因与恢复日用中性灰
+ *
+ * L-4：本组件在今日页与日历详情**共用**，而后者的 date 可能是任意历史日期。
+ * 所以「今天」不能写死 —— 只有 item.date 就是今天时才说「今天不用吃」，
+ * 历史日期说「该日不用吃」（例：翻回 9/17 看到的是「该日不用吃」而不是「今天不用吃」）。
  */
 export function StateLine({ item, unit }: { item: DayItem; unit: string }) {
+  const isToday = item.date === today()
+  const restLabel = isToday ? '今天不用吃' : '该日不用吃'
+
   if (item.state === 'pending') {
     return (
       <>
@@ -79,7 +86,7 @@ export function StateLine({ item, unit }: { item: DayItem; unit: string }) {
   if (item.state === 'rest') {
     return (
       <>
-        <span className="text-slate-400">今天不用吃</span>
+        <span className="text-slate-400">{restLabel}</span>
         {item.nextRateDate ? (
           <>
             <span className="text-slate-400">{' · '}</span>

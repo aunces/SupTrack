@@ -141,6 +141,11 @@ export async function importFromFile(
     await exportToFile()
   }
 
+  // L-3：记下「本次导入前那份自动备份」的时间。
+  // 备份文件的 meta 里带着它自己导出时的 lastExportAt，整表覆盖会把设置页那一行「变旧」——
+  // 明明刚刚才备份过，却显示成几天前。所以覆盖完再把时间写回本次导入的值。
+  const importedAt = nowIso()
+
   const imported: Record<string, number> = {}
 
   await db.transaction(
@@ -168,6 +173,13 @@ export async function importFromFile(
         await db.meta.put({ key, value })
       }
       await metaService.initDefaults()
+
+      // L-3：覆盖完 meta 之后再把 lastExportAt 修正为本次导入时间。
+      // 注意只有真的做了自动备份才修正（skipBackup 时用户没拿到新备份，
+      // 此时保留备份文件里的原值，否则设置页会说「刚导出过」而磁盘上并没有新文件）。
+      if (!options.skipBackup) {
+        await metaService.setLastExportAt(importedAt)
+      }
     },
   )
 
